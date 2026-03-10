@@ -49,7 +49,7 @@ done
 
 #If READS_1, READS_2 or OUTDIR are not set, exit
 if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" ]]; then
-    echo "Use: $0  --reads1 <reads1.fastq> --reads2 <reads2.fastq> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
+    echo "Use: $0  --reads1 <reads1.fastq[.gz]> --reads2 <reads2.fastq[.gz]> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
     echo "Default values: -p 1 -k 41 -d 10"
     exit 1
 fi

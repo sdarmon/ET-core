@@ -50,13 +50,17 @@ echo "K-mer size : $K"
 echo "TE consensus fasta file : $DFAM_FA"
 echo "Output directory : $OUTDIR"
 
+#If OUTDIR ends with a /, remove it
+if [[ "$OUTDIR" == */ ]]; then
+    OUTDIR="${OUTDIR%/}"
+fi
 
 #Local variables
-DATA_DIR=${OUTDIR}/data
-RESULTS_DIR=${OUTDIR}/results
-BASE_DIR=${RESULTS_DIR}/cores
+DATA_DIR="${OUTDIR}/data"
+RESULTS_DIR="${OUTDIR}/results"
+BASE_DIR="${RESULTS_DIR}/cores"
 WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR=${WORK_DIR}/bin
+BIN_DIR="${WORK_DIR}/bin"
 
 
 #endregion
@@ -68,15 +72,15 @@ if [[ -z "${SKIP_TE_LIBRARIES}" ]]; then
   # Extraction des TEs de la base de données Dfam
   echo "Extraction of the TEs from Dfam ..."
 
-  #Parameters :
-  #-i : path to the famdb installation
-  #families : command to extract the families
-  #--include-class-in-name : include the class of the TE in the name
-  #--curated : only curated families
-  #--descendants : include descendants of the specified species
-  #--ancestors : include ancestors of the specified species
-  #"${SPE_NAME}" : species name
-  #--format fasta_name : output format with fasta header containing the TE name and description
+#  Parameters :
+#  -i : path to the famdb installation
+#  families : command to extract the families
+#  --include-class-in-name : include the class of the TE in the name
+#  --curated : only curated families
+#  --descendants : include descendants of the specified species
+#  --ancestors : include ancestors of the specified species
+#  "${SPE_NAME}" : species name
+#  --format fasta_name : output format with fasta header containing the TE name and description
 #  ${FAMDB_BIN} -i ${LIBRARY_DIR}/famdb/ families \
 #  --include-class-in-name \
 #  --curated \
@@ -222,13 +226,13 @@ if [[ -z "${SKIP_BOWTIE_COMPS}" ]]; then
       :> ${BASE_DIR}/aligned_Rb${i}.txt
 
       ##Annotate the components nodes with the TE and ref genes informations
-      python3 ${BIN_DIR}/add_ref_TE.py \
-              ${BASE_DIR}/comp${i}.txt \
-              ${BASE_DIR}/aligned_ref_AS${i}.txt \
-              ${BASE_DIR}/aligned_Dfam${i}.txt \
-              ${BASE_DIR}/aligned_Rb${i}.txt \
-              ${BASE_DIR}/aligned_inter${i}.txt \
-              ${RESULTS_DIR}/graph/hc_1_hc_2_k${K}.abundance
+        python3 ${BIN_DIR}/add_ref_TE.py \
+                ${BASE_DIR}/comp${i}.txt \
+                ${BASE_DIR}/aligned_ref_AS${i}.txt \
+                ${BASE_DIR}/aligned_Dfam${i}.txt \
+                ${BASE_DIR}/aligned_Rb${i}.txt \
+                ${BASE_DIR}/aligned_inter${i}.txt \
+                ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance
 
   done
 
@@ -244,7 +248,7 @@ if [[ -z "${SKIP_BOWTIE_UNITIGS}" ]]; then
   mkdir -p ${BASE_DIR}/STAR_alignment_cons_dfam_all
 
   #Convert the unitigs into reads for star
-  cp ${RESULTS_DIR}/graph/outputNodes.txt ${BASE_DIR}/all_unitigs.txt
+  cp ${DATA_DIR}/graph/outputNodes.txt ${BASE_DIR}/all_unitigs.txt
   python3 ${BIN_DIR}/reads_to_align.py ${BASE_DIR}/all_unitigs.txt ${BASE_DIR}/all_unitigs.fa 0
 
   ###Bowtie2 alignment of the unitigs to the Dfam TE library
@@ -296,7 +300,7 @@ if [[ -z "${SKIP_ANA_ALIGN}" ]]; then
             ${BASE_DIR}/aligned_Dfam_unitigs.txt \
             ${BASE_DIR}/aligned_Rb_all.txt \
             ${BASE_DIR}/aligned_inter_all.txt \
-            ${RESULTS_DIR}/graph/hc_1_hc_2_k${K}.abundance
+            ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance
 
     end=`date +%s`
     elapsed=`expr $end - $begin`
@@ -324,10 +328,12 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE}" ]]; then
             -TE_fasta ${DFAM_FA}.no_tab.fa \
               -count ${DATA_DIR}/count_TE_TECOUNT.txt \
             -bowtie2 \
-            -RNA ${READS_1} \
-            -RNApair ${READS_2} \
+            -RNA ${DATA_DIR}/R1.fastp \
+            -RNApair ${DATA_DIR}/R2.fastp \
             -insert 500
+fi
 
+if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
     echo "TE counting using bowtie2 all alignment of the reads to the Dfam TE library ..."
 
     #${RESULTS_DIR}/alignment/READS_sorted.bam : aligned reads to the Dfam TE library already sorted
@@ -482,8 +488,9 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
     echo "Analysis of comp consensus prediction..."
 
     #Getting the sequences from ${RESULTS_DIR}/other_cores_list.txt
-    awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/comp_potential_TE.fa
-    sort -k1,1n ${RESULTS_DIR}/other_cores_list.txt > ${RESULTS_DIR}/other_cores_list.txt.sorted
+    awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_potential_TE.fa
+    head -1 ${RESULTS_DIR}/other_cores_list.txt > ${RESULTS_DIR}/other_cores_list.txt.sorted
+    awk ' NR>1 {print $0}' ${RESULTS_DIR}/other_cores_list.txt | sort -k1,1n >> ${RESULTS_DIR}/other_cores_list.txt.sorted
 
     #Align the consensus sequences to the Dfam TE library with bowtie2
     ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
@@ -495,7 +502,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
       -x TE_Dfam_${SPE} \
       --dovetail \
       -X 500 -S ${BASE_DIR}/alignment_consensus.sam \
-      -U ${BASE_DIR}/comp_potential_TE.fa &> ${BASE_DIR}/bowtie2_output_consensus.txt
+      -U ${BASE_DIR}/core_potential_TE.fa &> ${BASE_DIR}/bowtie2_output_consensus.txt
 
     ${BIN_DIR}/samtools view -bS \
       ${BASE_DIR}/alignment_consensus.sam \
@@ -508,14 +515,14 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
     python3 ${BIN_DIR}/filter_bam.py \
       ${BASE_DIR}/alignment_consensus.bam \
       ${BASE_DIR}/aligned_consensus.txt
-    awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/comp_potential_TE_unsorted.txt
-    awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/comp_potential_TE_unsorted.txt
-    awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/comp_potential_TE_unsorted.txt
+    awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_potential_TE_unsorted.txt
+    awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_potential_TE_unsorted.txt
+    awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_potential_TE_unsorted.txt
     echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${BASE_DIR}/analysis_comp_all.txt
-    sort -k3,3gr ${BASE_DIR}/comp_potential_TE_unsorted.txt | sort -u >> ${BASE_DIR}/analysis_comp_all.txt
+    sort -k3,3gr ${BASE_DIR}/core_potential_TE_unsorted.txt | sort -u >> ${BASE_DIR}/analysis_comp_all.txt
 
     echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${BASE_DIR}/analysis_comp_all.txt.sorted
-    sort -k1,1n ${BASE_DIR}/comp_potential_TE_unsorted.txt  | sort -u >> ${BASE_DIR}/analysis_comp_all.txt.sorted
+    sort -k1,1n ${BASE_DIR}/core_potential_TE_unsorted.txt  | sort -u >> ${BASE_DIR}/analysis_comp_all.txt.sorted
 
 
     #Get the ROC curves for the consensus sequences
@@ -530,19 +537,19 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
 
     #Now idem with the 100 first comps
     echo "Analysis of first 100 comp consensus prediction..."
-    awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/comp_potential_TE_100_unsorted.txt
-    awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/comp_potential_TE_100_unsorted.txt
-    awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/comp_potential_TE_100_unsorted.txt
+    awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_potential_TE_100_unsorted.txt
+    awk 'NR>1 && $1 < 100 {print $1,$2,$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
+    awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
 
     echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/other_cores_list_100.txt
-    sort -k3,3gr ${BASE_DIR}/comp_potential_TE_100_unsorted.txt >> ${RESULTS_DIR}/other_cores_list_100.txt
+    sort -k3,3gr ${BASE_DIR}/core_potential_TE_100_unsorted.txt | uniq >> ${RESULTS_DIR}/other_cores_list_100.txt
 
     echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/other_cores_list_100.txt.sorted
-    sort -k1,1n ${BASE_DIR}/comp_potential_TE_100_unsorted.txt >> ${RESULTS_DIR}/other_cores_list_100.txt.sorted
+    sort -k1,1n ${BASE_DIR}/core_potential_TE_100_unsorted.txt | uniq >> ${RESULTS_DIR}/other_cores_list_100.txt.sorted
 
-    rm ${BASE_DIR}/comp_potential_TE_100_unsorted.txt
+    rm ${BASE_DIR}/core_potential_TE_100_unsorted.txt
     #Getting the sequences from ${RESULTS_DIR}/other_cores_list_100.txt
-    awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}' FS="\t" ${RESULTS_DIR}/other_cores_list_100.txt > ${BASE_DIR}/comp_potential_TE_100.fa
+    awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}' FS="\t" ${RESULTS_DIR}/other_cores_list_100.txt > ${BASE_DIR}/core_potential_TE_100.fa
     #Align the consensus sequences to the Dfam TE library with bowtie2
     ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
       -a \
@@ -553,7 +560,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
       -x TE_Dfam_${SPE} \
       --dovetail \
       -X 500 -S ${BASE_DIR}/alignment_consensus_100.sam \
-      -U ${BASE_DIR}/comp_potential_TE_100.fa &> ${BASE_DIR}/bowtie2_output_consensus_100.txt
+      -U ${BASE_DIR}/core_potential_TE_100.fa &> ${BASE_DIR}/bowtie2_output_consensus_100.txt
 
     ${BIN_DIR}/samtools view -bS \
       ${BASE_DIR}/alignment_consensus_100.sam \
@@ -569,7 +576,8 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
         ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
         ${BASE_DIR}/aligned_consensus_100.txt \
         ${BASE_DIR}/comp \
-        ${RESULTS_DIR}/output_roc_curve_100
+        ${RESULTS_DIR}/output_roc_curve_100 \
+        ${BASE_DIR}/all_unitigs_annotated.nodes
 
   #Look at the max extended degree of the missed TEs to understand if they are in small components or isolated nodes
   #This solution is quick and dirty, it should be optimised with a python script later

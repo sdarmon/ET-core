@@ -165,25 +165,25 @@ for i in range(len(TP_list)):
 #Plot the ROC curve and color the dot corresponding to each abundance threshold
 # ab_threshold_list doit exister et avoir la même longueur que recall_list/precision_list
 c = np.array(ab_threshold_list)
-
-# Choisir la normalisation : LogNorm() si large plage, sinon Normalize()
-norm = LogNorm(vmin=c.min(), vmax=c.max()) if (c > 0).all() and (c.max() / c.min() > 100) else Normalize(vmin=c.min(), vmax=c.max())
-fig, ax = plt.subplots(figsize=(6, 6))
-# forcer les axes entre 0 et 1
-ax.set_xlim(0.0, 1.0)
-ax.set_ylim(0.0, 1.0)
-sc = ax.scatter(recall_list, precision_list, c=c, cmap='plasma', norm=norm, s=40, edgecolors='k')
-ax.set_xlabel('Recall')
-ax.set_ylabel('Precision')
-ax.set_title('Precision-Recall Curve for TE Prediction by Ab Thresholding')
-ax.grid(True)
-
-# colorbar comme bloc-légende
-cbar = plt.colorbar(sc, ax=ax)
-cbar.set_label('abundance threshold')
-
-plt.savefig(Arg[5]+"by_abundance.png", dpi=300)
-plt.close()
+#
+# # Choisir la normalisation : LogNorm() si large plage, sinon Normalize()
+# norm = LogNorm(vmin=c.min(), vmax=c.max()) if (c > 0).all() and (c.max() / c.min() > 100) else Normalize(vmin=c.min(), vmax=c.max())
+# fig, ax = plt.subplots(figsize=(6, 6))
+# # forcer les axes entre 0 et 1
+# ax.set_xlim(0.0, 1.0)
+# ax.set_ylim(0.0, 1.0)
+# sc = ax.scatter(recall_list, precision_list, c=c, cmap='plasma', norm=norm, s=40, edgecolors='k')
+# ax.set_xlabel('Recall')
+# ax.set_ylabel('Precision')
+# ax.set_title('Precision-Recall Curve for TE Prediction by Ab Thresholding')
+# ax.grid(True)
+#
+# # colorbar comme bloc-légende
+# cbar = plt.colorbar(sc, ax=ax)
+# cbar.set_label('abundance threshold')
+#
+# plt.savefig(Arg[5]+"by_abundance.png", dpi=300)
+# plt.close()
 
 
 #Now do it again with extended degree as threshold using this new file :
@@ -256,26 +256,26 @@ for i in range(len(TP_list)):
 #Plot the ROC curve and color the dot corresponding to each extended degree threshold
 # ex_deg_threshold_list doit exister et avoir la même longueur que recall_list/precision_list
 
-c = np.array(ex_deg_threshold_list)
-norm = LogNorm(vmin=c.min(), vmax=c.max()) if (c > 0).all() and (c.max() / c.min() > 100) else Normalize(vmin=c.min(), vmax=c.max())
-
-fig, ax = plt.subplots(figsize=(6, 6))
-# forcer les axes entre 0 et 1
-ax.set_xlim(0.0, 1.0)
-ax.set_ylim(0.0, 1.0)
-sc = ax.scatter(recall_list, precision_list, c=c, cmap='plasma', norm=norm, s=40, edgecolors='k')
-ax.set_xlabel('Recall')
-ax.set_ylabel('Precision')
-ax.set_title('Precision-Recall Curve for TE Prediction by Extended Degree Thresholding')
-ax.grid(True)
-
-# forcer les axes entre 0 et 1
-# colorbar attachée à la figure/sous-figure
-cbar = fig.colorbar(sc, ax=ax)
-cbar.set_label('extended degree threshold')
-
-fig.savefig(Arg[5] + "by_extended_degree.png", dpi=300)
-plt.close(fig)
+# c = np.array(ex_deg_threshold_list)
+# norm = LogNorm(vmin=c.min(), vmax=c.max()) if (c > 0).all() and (c.max() / c.min() > 100) else Normalize(vmin=c.min(), vmax=c.max())
+#
+# fig, ax = plt.subplots(figsize=(6, 6))
+# # forcer les axes entre 0 et 1
+# ax.set_xlim(0.0, 1.0)
+# ax.set_ylim(0.0, 1.0)
+# sc = ax.scatter(recall_list, precision_list, c=c, cmap='plasma', norm=norm, s=40, edgecolors='k')
+# ax.set_xlabel('Recall')
+# ax.set_ylabel('Precision')
+# ax.set_title('Precision-Recall Curve for TE Prediction by Extended Degree Thresholding')
+# ax.grid(True)
+#
+# # forcer les axes entre 0 et 1
+# # colorbar attachée à la figure/sous-figure
+# cbar = fig.colorbar(sc, ax=ax)
+# cbar.set_label('extended degree threshold')
+#
+# fig.savefig(Arg[5] + "by_extended_degree.png", dpi=300)
+# plt.close(fig)
 
 
 ##Now we get the same curves but by taking all nodes from the comps
@@ -386,6 +386,7 @@ for i in range(len(TP_list)):
     precision_list.append(precision)
     recall_list.append(recall)
 
+last_r=recall_list[-1]
 #Plot the ROC curve and color the dot corresponding to each abundance threshold
 # ab_threshold_list doit exister et avoir la même longueur que recall_list/precision_list
 c = np.array(ab_threshold_list)
@@ -496,6 +497,7 @@ for i in range(len(TP_list)):
     precision_list.append(precision)
     recall_list.append(recall)
 
+
 #Plot the ROC curve and color the dot corresponding to each extended degree threshold
 # ex_deg_threshold_list doit exister et avoir la même longueur que recall_list/precision_list
 #complete ex_deg_threshold_list with the additional nodes extended degree (which is the key of dic_additional_nodes) and complete the size_ex_deg list
@@ -516,12 +518,17 @@ fig, ax = plt.subplots(figsize=(6, 6))
 ax.set_xlim(0.0, 1.0)
 ax.set_ylim(0.0, 1.0)
 sc = ax.scatter(recall_list, precision_list, c=c, cmap='plasma', norm=norm, s=size_ex_deg, edgecolors='k')
+#add a vertical line at the last recall value with a dashed line saying "last recall with extended t-cores"
+ax.axvline(x=last_r, color='green', linestyle='--', label='last recall with extended t-cores')
+
 ax.set_xlabel('Recall')
 ax.set_ylabel('Precision')
 
 
 ax.set_title('Precision-Recall Curve for TE Prediction')
 ax.grid(True)
+#Add the legend for the vertical line
+ax.legend(loc='upper right')
 # colorbar comme bloc-légende
 cbar = plt.colorbar(sc, ax=ax)
 cbar.set_label('Max extended degree')

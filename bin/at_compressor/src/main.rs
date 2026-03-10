@@ -83,7 +83,7 @@ fn main() {
             }
 
             // Check if the current nucleotide is A or T (case-insensitive just in case)
-            let is_at = b == b'A' || b == b'T' || b == b'a' || b == b't';
+            let is_at = true; //b == b'A' || b == b'T' || b == b'a' || b == b't';
             
             // Keep the base if it is NOT an A/T, OR if the streak count is within our window `w`
             if !is_at || count <= w {

@@ -638,9 +638,15 @@ void Graph::weighingANodeGraphDuppli(int source, int rayon) {
 }
 
 //Permet de donner un poids à tous les sommets du graphe.
-void Graph::weighingAllNodes(int rayon) {
-    for (vector<Node>::iterator it = Vertices.begin(); it != Vertices.end(); ++it){
-        weighingANode(it->val, rayon);
+void Graph::weighingAllNodes(int rayon, int d) {
+    if (d==0){
+        for (vector<Node>::iterator it = Vertices.begin(); it != Vertices.end(); ++it){
+            weighingANode(it->val, rayon);
+        }
+    } else {
+        for (vector<Node>::iterator it = Vertices.begin(); it != Vertices.end(); ++it){
+            weighingANodeHamming(it->val, rayon,d);
+        }
     }
 }
 

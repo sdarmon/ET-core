@@ -48,7 +48,7 @@ done
 
 #If READS_1, READS_2 or OUTDIR are not set, exit
 if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" ]]; then
-    echo "Use: $0  --reads1 <reads1.fastq> --reads2 <reads2.fastq> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
+    echo "Use: $0  --reads1 <reads1.fastq[.gz]> --reads2 <reads2.fastq[.gz]> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
     echo "Default values: -p 8 -k 41 -d 10"
     exit 1
 fi
@@ -88,7 +88,7 @@ mkdir -p ${RESULTS_DIR}/induced_cores_subgraph
 if [[ -z "${SKIP_FASTP}" ]]; then
   ##FastP of the reads to remove the poly(A) tails
   echo "FastP of the reads ..."
-
+  #Can handle gzipped files
   ${BIN_DIR}/fastp \
       --detect_adapter_for_pe \
       --trim_poly_g \
@@ -159,7 +159,8 @@ if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
       ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
       ${D_NT} \
       -k ${K}  \
-      -o ${DATA_DIR}/graph/outputNodes.txt
+      -o ${DATA_DIR}/graph/outputNodes.txt \
+      -h 2
 
 
   end=`date +%s`
@@ -171,7 +172,7 @@ fi
 if [[ -z "${SKIP_THRESHOLD}" ]]; then
   ##Compute the threshold
   echo "Threshold of the nodes..."
-      T=$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
+      T=6 #$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
       # Update the T variable in the environment.sh file
       #sed -i "s/^T=.*/T=${T}/" "${ENV}"
       echo "T=${T}"

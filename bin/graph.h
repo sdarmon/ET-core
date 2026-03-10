@@ -116,7 +116,7 @@ class Graph
                   vector<int> &sons, vector<int> &depthSons, vector<Neighbor*> &aretes, vector<string> & labelSons);
     void weighingANode(int source, int rayon);
     void weighingANodeGraphDuppli(int source, int rayon);
-    void weighingAllNodes(int rayon);
+    void weighingAllNodes(int rayon, int ham_err);
     void weighingAllNodesGraphDuppli(int rayon);
     bool neigh(int u,int v,char s1,char s2);
     void BFScatch(vector<string> &kmers_at_distance_d,vector<Neighbor*> &aVoir,vector<int> &vu,vector<int> &rayons);

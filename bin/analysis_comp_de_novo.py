@@ -4,7 +4,9 @@
 # with the sequences.
 import sys
 import gc
-
+import re
+from collections import defaultdict
+from numpy.ma.core import sum
 
 Arg = sys.argv[:]
 
@@ -83,40 +85,44 @@ def rev_comp(seq):
 
 #Function that counts the number of microsatellites in a sequence
 def count_microsat(seq):
-    vu = [[0 for _ in range(encode("TTTT")+1)] for _ in range(len(seq))]
-    for i in range(6,(encode("TTTT")+1)):
-        s = decode(i)
-        if s == '' or is_a_microsat(s):
-            continue
-        l = len(s)
-        for j in range(len(seq) - l):
-            if seq[j:j+l] == s and seq[j+l:j+2*l] == s:
-                for k in range(j,j+2*l):
-                    vu[k][i] = 1
-                    i_rev = encode(rev_comp(s))
-                    vu[k][i_rev] = 1
-    #Finding the highest sum of vu[*][i] for i in range(6,(encode("TTTTT")+1))
-    m = 0
-    seq_m = ''
-    for i in range(6,(encode("TTTT")+1)):
-        s = decode(i)
-        if s == '' or is_a_microsat(s):
-            continue
-        nb_copy = sum([vu[j][i] for j in range(len(seq))]) / len(s)
-        if nb_copy > m:
-            m = nb_copy
-            seq_m = s
+    if not seq:
+        return (0, "", 0.0)
+    vu = [0 for _ in range(len(seq))]
+    # Dictionary to keep track of total bases covered by each motif
+    coverage = defaultdict(int)
 
-    #Finding the positions covered by a microsatellite
-    pos_vu = [0 for _ in range(len(seq))]
-    for i in range(len(seq)):
-        for j in range(6,(encode("TTTT")+1)):
-            if vu[i][j] == 1:
-                pos_vu[i] = 1
-    vu.clear()
-    del vu
-    gc.collect()
-    return (m, seq_m, sum(pos_vu)/len(seq))
+    # Regex: Find 1 to 6 ACGT characters, repeated at least twice total.
+    # '?' ensures it finds the shortest core motif (e.g., "A" instead of "AA")
+    pattern = re.compile(r'([ACGT]{2,20}?)\1+')
+
+    # finditer finds non-overlapping matches in a single fast C-level pass
+    for match in pattern.finditer(seq):
+        motif = match.group(1)      # The repeating unit (e.g., "AT")
+        full_match = match.group(0) # The full tandem repeat (e.g., "ATATAT")
+
+        #If the size of the full match is lesser than 8, we skip it
+        if len(full_match) < 8:
+            continue
+
+        # Mark all positions covered by this tandem repeat as seen
+        for i in range(match.start(), match.end()):
+            vu[i] = 1
+
+        # Add the length of the tandem repeat to this motif's total coverage
+        coverage[motif] += len(full_match)
+
+    if not coverage:
+        return (0, "", 0.0)
+
+    # Find the motif with the highest coverage
+    seq_m = max(coverage, key=coverage.get)
+    max_covered_bases = coverage[seq_m]
+
+    # Calculate return values to match your original output format
+    m = max_covered_bases // len(seq_m) # Total copies of this motif
+    ratio = sum(vu) / len(seq) # Ratio of sequence covered by microsatellites
+
+    return (m, seq_m, ratio)
 
 
 
@@ -141,10 +147,9 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
                             total_length += len(L[1])
                             ab_max= max(ab_max, abundance[int(L[0])])
                     m, seq_m, r = count_microsat(joined_seqs)
-
-                if total_poly / len(seqs) >= 1:
-                    f1.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
-                if r >= 0.33:
-                    f2.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
-                if total_poly / len(seqs) < 1 and r < 0.33 :
-                    f3.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+                    if total_poly / len(seqs) >= 0.8:
+                        f2.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+                    if r >= 0.2:
+                        f1.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\t{seq_m}\t{r}\n")
+                    if total_poly / len(seqs) < 0.8 and r < 0.2 :
+                        f3.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")

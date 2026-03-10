@@ -1,6 +1,12 @@
 # Extented-t-core
 
-Intro TBD
+This repository contains the code to *de novo* compute the extended-t-cores of a compacted de Bruijn graph built from short reads RNA-seq.
+From the extended-t-cores, we can propose potential Transposable Elements (TEs) candidates.
+
+A second script is available to compare the extended-t-cores to a TE consensus library,
+such as the one from the **DFAM** database.
+
+TBD: Incomplete
 
 ## *De novo* extented-t-cores computing
 
@@ -20,11 +26,11 @@ Currently, one can either directly use the binary version or recompile all the c
 To execute the code, simply run the following command in the terminal:
 ```
 bash extended-t-core.sh \
-    --reads1 reads_1.fastq \
-    --reads2 reads_2.fastq \
+    --reads1 reads_1.fastq[.gz] \
+    --reads2 reads_2.fastq[.gz] \
     -O output_dir
 ```
-Where `--reads1` and `--reads2` are the paths to the paired-end reads, and `-O` is the output directory.
+Where `--reads1` and `--reads2` are the paths to the paired-end reads, possibly `.gz`, and `-O` is the output directory.
 Some additional parameters can be specified, such as the number of threads to use (`-p`) and the k-mer size for the de Bruijn graph construction (`-k`), or the distance of the extended degree (`-d`).
 
 
@@ -79,8 +85,8 @@ The output directory will contain the following files and directories:
 
 ```
 bash extented-t-core_binaries.sh \
-    --reads1 reads_1.fastq \
-    --reads2 reads_2.fastq \
+    --reads1 reads_1.fastq[.gz] \
+    --reads2 reads_2.fastq[.gz] \
     -O output_dir
 ```
 
@@ -88,12 +94,12 @@ bash extented-t-core_binaries.sh \
 
 ### Dependency and versions used
 
-- **DFAM database** version XX (downloaded on XX)
-- **Bowtie2** version XX
-- **Samtools** version XX
-- **TECount** version XX (from the **TEtools** package)
-- **featureCounts** version XX
-- **Bedtools** version XX
+- **DFAM database** version 38 
+- **Bowtie2** version 2.2.4
+- **Samtools** version 1.9
+- **TECount** version 1.0.0 (from the **TEtools** package)
+- **featureCounts** version 2.1.1
+- **Bedtools** version 2.31.1
 
 ### Code example (with dependencies built)
 
@@ -107,30 +113,72 @@ bash te_analysis.sh \
     -O output_dir
 ```
 where `--te-cons` is the path to the TE consensus sequences in FASTA format, and `-O` is the output directory.
-Some additional parameters can be specified, such as the number of threads to use (-p) and the k-mer size for the de Bruijn graph construction (-k). -O, -p and -k should be the same as the ones used for the de novo extended-t-core computing.
+Some additional parameters can be specified, such as the number of threads to use (`-p`) and the k-mer size for the de Bruijn graph construction (`-k`). `-O`, `-p` and `-k` should be the same as the ones used for the de novo extended-t-core computing.
 
 
 ### Quick recap of the steps
 
-TBD
+1. Build the TE library from the **DFAM** database for **Bowtie2** alignment.
+2. Align the reads to the TE library using **Bowtie2** and keep only the primary alignments.
+3. Align every extended-t-core to the TE library using **Bowtie2** and keep only the primary alignments.
+4. Annotate the extended-t-cores with the TE family they align to.
+5. Align all the unitigs to the TE library using **Bowtie2** and keep only the primary alignments.
+6. Annotate all the unitigs with the TE family they align to.
+7. Compute the TE count for each TE family using **TECount**.
+8. Compute the TE not covered by the extended-t-cores.
+9. Save ROC curves for the TE prediction by the extended-t-cores.
 
 ### Output and files structure
 
-TBD
+The output directory will have the following additional files and directories:
+
+    OUTDIR/
+    ├── results/
+    │   ├── TE_coverage_count_ab_filtered.txt       <-- Ground truth TEs
+    │   ├── output_roc_curves.png                   <-- KEY VISUAL
+    │   │
+    │   ├── alignment/
+    │   │   ├── READS.sam 
+    │   │   ├── READS_sorted.bam (sorted and indexed, only primary)
+    │   │   └── bowtie2_output_reads.txt
+    │   │
+    │   └── cores/
+    │       ├── alignment_all_unitigs.sam/bam
+    │       ├── all_unitigs_annotated.nodes
+    │       ├── extended_t_cores_${i}_annotated.nodes
+    │       └── alignment_${i}/
+    │           ├── extended_t_cores_${i}_aligned.sam
+    │           └──extended_t_cores_${i}_aligned.bam (sorted and indexed, only primary)
+    └── data/
+        └── count_TE_TECOUNT.txt
+
 
 ### Script to extract the TE consensus from the DFAM database
 
-Download and pre-requis TBD
+Download the partitions of the **Dfam** database corresponding the studied
+species (read thier README) into a `${LIBRARY_DIR}` : https://www.dfam.org/releases/current/families/FamDB/
 
+Get **FamDB** from their GitHub : https://github.com/Dfam-consortium/FamDB
+
+Install the Python3 package **h5py** or activate the venv (`venv/bin/activate`) of the
+extended-t-core project.
 
 ```
-  ${FAMDB_BIN} -i ${LIBRARY_DIR}/famdb/ families \
+  famdb.py -i ${LIBRARY_DIR}/ families \
   --include-class-in-name \
   --curated \
   --descendants \
   --ancestors \
   "${SPE_NAME}" --format fasta_name \
    | sed 's/#/\t/g' \
-   | sed 's/ @/\t/g' \
-   | sed 's/^>/>dfam_/g' > ${DFAM_FA}
+   | sed 's/ @/\t/g'  > ${DFAM_FA}
 ```
+Where Parameters :
+- `-i` : path to the famdb installation
+- `families` : command to extract the families
+- `--include-class-in-name` : include the class of the TE in the name
+- `--curated` : only curated families
+- `--descendants` : include descendants of the specified species
+- `--ancestors` : include ancestors of the specified species
+- `${SPE_NAME}` : species name to specify (e.g. "Mus musculus")
+- `--format fasta_name` : output format with fasta header containing the TE name and description

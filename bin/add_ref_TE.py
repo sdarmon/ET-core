@@ -152,7 +152,10 @@ with open(Arg[6], 'r') as f:
 # is not the same as the index in seq_intersectionTE%i.txt (from 0 to the number of nodes of the comp)
 
 with open(Arg[1], 'r') as f:
-    with open(Arg[1].split('.')[0] + "_annotated.nodes", 'w') as f_out:
+    file_name= Arg[1]
+    last_dot= file_name.rfind('.')
+    prefix= file_name[:last_dot]
+    with open(prefix + "_annotated.nodes", 'w') as f_out:
         i = 0 #Here is the index of the line in comp%i.txt
         for line in f:
             L = line[:-1].split('\t')

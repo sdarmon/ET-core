@@ -16,8 +16,8 @@
 // graph implementation
 int main(int argc, char** argv)
 {
-    if (argc!=4 and argc!=6 and argc!=8){
-        cout << "Expected use of this program: \n\n\t" <<argv[0] << " file.nodes file.edges radius -k kmer -o output.txt\n" << endl;
+    if (argc!=4 and argc!=6 and argc!=8 and argc!=10){
+        cout << "Expected use of this program: \n\n\t" <<argv[0] << " file.nodes file.edges radius -k kmer -o output.txt -h ham_err\n" << endl;
         return 0;
     }
 
@@ -26,6 +26,8 @@ int main(int argc, char** argv)
 
     char* nodesPath = argv[1];
     char* edgesPath = argv[2];
+
+    int ham_err = 0;
 
     ifstream edges(edgesPath, std::ios::binary);
     ifstream nodes(nodesPath, std::ios::binary);
@@ -37,9 +39,12 @@ int main(int argc, char** argv)
     if(argc >= 6 and argv[4][1]=='k' ){
         G.kmer = stoi(argv[5]);
     }
+    if (argc >= 8 and argv[8][1]=='h' ){
+        ham_err = stoi(argv[9]);
+    }
 
     G.weighing();
-    G.weighingAllNodes(stoi(argv[3]));
+    G.weighingAllNodes(stoi(argv[3]), ham_err);
 
     if(argc == 6 and argv[4][1]=='o'){
         ofstream output;
@@ -47,6 +52,11 @@ int main(int argc, char** argv)
         printGraphVertices(G,output);
         output.close();
     } else if(argc == 8 and argv[6][1]=='o'){
+        ofstream output;
+        output.open(argv[7]);
+        printGraphVertices(G,output);
+        output.close();
+    } else if(argc == 10 and argv[6][1]=='o'){
         ofstream output;
         output.open(argv[7]);
         printGraphVertices(G,output);
