@@ -20,16 +20,15 @@ Currently, one can either directly use the binary version or recompile all the c
 To execute the code, simply run the following command in the terminal:
 ```
 bash extended-t-core.sh \
-    -p 8 \
-    -k 41 \
     --reads1 reads_1.fastq \
     --reads2 reads_2.fastq \
     -O output_dir
 ```
-Where `-p` is the number of threads to use, `-k` is the k-mer size, `--reads1` and `--reads2` are the paths to the paired-end reads, and `-O` is the output directory.
+Where `--reads1` and `--reads2` are the paths to the paired-end reads, and `-O` is the output directory.
+Some additional parameters can be specified, such as the number of threads to use (`-p`) and the k-mer size for the de Bruijn graph construction (`-k`), or the distance of the extended degree (`-d`).
 
 
-#### Quick recap of the steps
+### Quick recap of the steps
 
 1. Build the binaries (**Rust** and **C++** codes) and create a **Python3** venvironment.
 2. Run **FastP** to trim the reads, detect and remove adapters, and filter out low-quality reads. Logs are saved in the `output_dir/fastp_log.html` file.
@@ -44,7 +43,7 @@ Where `-p` is the number of threads to use, `-k` is the k-mer size, `--reads1` a
 11. Compute the induced subgraph of the pairwise connections between the extended-t-cores.
 12. (TO BE DONE) Assembly of potential full-length Transposable Elements using the extended-t-cores as seeds and the pairwise connections between them.
 
-#### Output and files structure
+### Output and files structure
 
 The output directory will contain the following files and directories:
 
@@ -80,8 +79,6 @@ The output directory will contain the following files and directories:
 
 ```
 bash extented-t-core_binaries.sh \
-    -p 8 \
-    -k 41 \
     --reads1 reads_1.fastq \
     --reads2 reads_2.fastq \
     -O output_dir
@@ -89,3 +86,51 @@ bash extented-t-core_binaries.sh \
 
 ## Transposable Elements analysis
 
+### Dependency and versions used
+
+- **DFAM database** version XX (downloaded on XX)
+- **Bowtie2** version XX
+- **Samtools** version XX
+- **TECount** version XX (from the **TEtools** package)
+- **featureCounts** version XX
+- **Bedtools** version XX
+
+### Code example (with dependencies built)
+
+TBD
+
+### Binary version (without dependencies)
+
+```
+bash te_analysis.sh \
+    --te-cons dfam_te_consensus.fa \
+    -O output_dir
+```
+where `--te-cons` is the path to the TE consensus sequences in FASTA format, and `-O` is the output directory.
+Some additional parameters can be specified, such as the number of threads to use (-p) and the k-mer size for the de Bruijn graph construction (-k). -O, -p and -k should be the same as the ones used for the de novo extended-t-core computing.
+
+
+### Quick recap of the steps
+
+TBD
+
+### Output and files structure
+
+TBD
+
+### Script to extract the TE consensus from the DFAM database
+
+Download and pre-requis TBD
+
+
+```
+  ${FAMDB_BIN} -i ${LIBRARY_DIR}/famdb/ families \
+  --include-class-in-name \
+  --curated \
+  --descendants \
+  --ancestors \
+  "${SPE_NAME}" --format fasta_name \
+   | sed 's/#/\t/g' \
+   | sed 's/ @/\t/g' \
+   | sed 's/^>/>dfam_/g' > ${DFAM_FA}
+```

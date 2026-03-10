@@ -1,0 +1,4 @@
+#Cargo build files:
+scr/bin/at_compessor/target*
+scr/bin/gene_finder_de_novo/target*
+scr/bin/filtering_low_ab_percent/target*

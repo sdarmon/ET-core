@@ -3,8 +3,11 @@
 
 
 begin=`date +%s`
-P=""
-K=""
+start=`date +%s`
+
+P="8"
+K="41"
+D_NT="10"
 READS_1=""
 READS_2=""
 OUTDIR=""
@@ -18,6 +21,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -k)
             K="$2"
+            shift 2
+            ;;
+        -d)
+            D_NT="$2"
             shift 2
             ;;
         --reads1)
@@ -39,9 +46,22 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+#If READS_1, READS_2 or OUTDIR are not set, exit
+if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" ]]; then
+    echo "Use: $0  --reads1 <reads1.fastq> --reads2 <reads2.fastq> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
+    echo "Default values: -p 8 -k 41 -d 10"
+    exit 1
+fi
+
+#If OUTDIR end with a /, remove it
+if [[ "$OUTDIR" == */ ]]; then
+    OUTDIR="${OUTDIR%/}"
+fi
+
 # Check values
 echo "Threads: $P"
 echo "K-mer: $K"
+echo "Extended Degree distance: $D_NT"
 echo "Reads1: $READS_1"
 echo "Reads2: $READS_2"
 echo "Output dir: $OUTDIR"
@@ -61,7 +81,7 @@ mkdir -p $DATA_DIR/graph
 mkdir -p ${RESULTS_DIR}/induced_cores_subgraph
 
   python3 -m venv venv
-  source venv/bin/activate
+  source ${WORK_DIR}/venv/bin/activate
   pip install -r requirements.txt
 
 
@@ -85,8 +105,8 @@ fi
 if [[ -z "${SKIP_HC}" ]]; then
   ##Compute the HC
   echo "HC of the reads ..."
-  python3 ${BIN_DIR}/homomorphic_compression.py  ${DATA_DIR}/R1.fastp ${DATA_DIR}/hc_1.fq 5
-  python3 ${BIN_DIR}/homomorphic_compression.py  ${DATA_DIR}/R2.fastp ${DATA_DIR}/hc_2.fq 5
+  ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R1.fastp ${DATA_DIR}/hc_1.fa 5
+  ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R2.fastp ${DATA_DIR}/hc_2.fa 5
 
   end=`date +%s`
   elapsed=`expr $end - $begin`
@@ -95,7 +115,7 @@ if [[ -z "${SKIP_HC}" ]]; then
 
   ##Compute the DGB with bcalm
   echo "DGB with bcalm ..."
-  ls -1 ${DATA_DIR}/hc_1.fq ${DATA_DIR}/hc_2.fq > ${DATA_DIR}/list_reads
+  ls -1 ${DATA_DIR}/hc_1.fa ${DATA_DIR}/hc_2.fa > ${DATA_DIR}/list_reads
   ${BIN_DIR}/bcalm \
       -in ${DATA_DIR}/list_reads \
       -kmer-size ${K} \
@@ -105,8 +125,8 @@ if [[ -z "${SKIP_HC}" ]]; then
 fi
 
 
-if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
 
+if [[ -z "${SKIP_FILTERING}" ]]; then
 awk -f ${BIN_DIR}/bcalm_unitig_to_edges.awk ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa > ${DATA_DIR}/graph/hc_1_hc_2_k${K}.edges
 awk '/^>/ {id = substr($1, 2); next } {print id "\t" $0}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa > ${DATA_DIR}/graph/hc_1_hc_2_k${K}.nodes
 awk '/^>/ {ab = substr($4, 6); print ab}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa > ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance
@@ -129,7 +149,9 @@ awk '/^>/ {ab = substr($4, 6); print ab}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unit
   begin=`date +%s`
   echo "Filtering time (in seconds): $elapsed \n"
 
+fi
 
+if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
   ##Compute the weighting
   echo "Weighting of the nodes..."
   ${BIN_DIR}/graph.exe \
@@ -144,16 +166,16 @@ awk '/^>/ {ab = substr($4, 6); print ab}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unit
   elapsed=`expr $end - $begin`
   begin=`date +%s`
   echo "Weighting time (in seconds): $elapsed \n"
+fi
 
-
+if [[ -z "${SKIP_THRESHOLD}" ]]; then
   ##Compute the threshold
   echo "Threshold of the nodes..."
-  if [[ -z "${SKIP_AGGLO}" ]]; then
       T=$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
       # Update the T variable in the environment.sh file
       #sed -i "s/^T=.*/T=${T}/" "${ENV}"
       echo "T=${T}"
-  fi
+
 
   end=`date +%s`
   elapsed=`expr $end - $begin`
@@ -164,18 +186,19 @@ fi
 if [[ -z "${SKIP_AGGLO}" ]]; then
   ## Compute the connexe components
   echo "Agglomeration of connexe components..."
-  #rm -r ${BASE_DIR}/*
+  #if the BASE_DIR is not empty, remove the files in it
+  shopt -s nullglob
    for file in ${BASE_DIR}/*; do
-        rm ${file}
+        rm -r ${file}
       done
+shopt -u nullglob
 
   ${BIN_DIR}/agglo.exe \
       ${DATA_DIR}/graph/outputNodes.txt \
       ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
       -c ${T} \
-      -d ${D_NT} \
-      ${RESULTS_DIR} \
-      -clean ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance > ${RESULTS_DIR}/rapportAgglo.txt
+      -k ${K} \
+      ${BASE_DIR}
 
 
   end=`date +%s`
@@ -186,16 +209,18 @@ if [[ -z "${SKIP_AGGLO}" ]]; then
 fi
 
 if [[ -z "${SKIP_CONSENSUS}" ]]; then
+   echo "Representative sequences... \n "
     ##The number of components to compute
-     MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
-        for file in ${BASE_DIR}/comp*.txt; do
-          MAXI=$(( $MAXI + 1 ))
-        done
-        echo "Number of comps : ${MAXI}"
+    MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
+    shopt -s nullglob
+    for file in ${BASE_DIR}/comp*.txt; do
+      MAXI=$(( $MAXI + 1 ))
+    done
+    shopt -u nullglob
+    echo "Number of comps : ${MAXI}"
 
 
     ##Compute the analysis over every component
-    echo "Consensus sequence :" #>> ${BASE_DIR}/induced_cores_subgraph${i}/gene_summary.txt
     python3 ${BIN_DIR}/seq_consensium_of_comps.py \
         ${BASE_DIR}/comp \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
@@ -207,8 +232,11 @@ if [[ -z "${SKIP_CONSENSUS}" ]]; then
       end=`date +%s`
       elapsed=`expr $end - $begin`
       begin=`date +%s`
-      echo "Consensus sequences time (in seconds): $elapsed \n"
-    
+      echo "Representative sequences time (in seconds): $elapsed \n"
+fi
+
+if [[ -z "${SKIP_INDUCED}" ]]; then
+    echo "Analysis of the extended_t_cores induced subgraph... \n "
     ${BIN_DIR}/gene_finder_de_novo.exe \
           ${BASE_DIR}/comp \
           ${DATA_DIR}/graph/outputNodes.txt \
@@ -220,16 +248,38 @@ if [[ -z "${SKIP_CONSENSUS}" ]]; then
 
      awk '{print $3}' FS='\t' ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt | sed 's/,/\t/g' > ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt
     python3 ${BIN_DIR}/connecting_to_edges.py ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt  > ${RESULTS_DIR}/induced_cores_subgraph/connected.edges
+  end=`date +%s`
+  elapsed=`expr $end - $begin`
+  begin=`date +%s`
+  echo "Analysis time (in seconds): $elapsed \n"
+fi
 
-
+if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
+  echo "De novo classification of the extended_t_cores... \n"
     python3 ${BIN_DIR}/analysis_comp_de_novo.py \
         ${BASE_DIR}/comp \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \
         ${RESULTS_DIR}/seq_consensium.txt \
         ${RESULTS_DIR}/analysis_comp
 
+printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/microsatellite_cores_list.txt
+sort -k3,3nr ${RESULTS_DIR}/analysis_comp_microsat.txt.temp >> ${RESULTS_DIR}/microsatellite_cores_list.txt
+rm ${RESULTS_DIR}/analysis_comp_microsat.txt.temp
+
+printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchAT_cores_list.txt
+sort -k3,3nr ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp >> ${RESULTS_DIR}/stretchAT_cores_list.txt
+rm ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp
+
+printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/other_cores_list.txt
+sort -k3,3nr ${RESULTS_DIR}/analysis_comp_others.txt.temp >> ${RESULTS_DIR}/other_cores_list.txt
+rm ${RESULTS_DIR}/analysis_comp_others.txt.temp
+
       end=`date +%s`
       elapsed=`expr $end - $begin`
       begin=`date +%s`
-      echo "Gene finding and analysis time (in seconds): $elapsed \n"
+      echo "De novo classification time (in seconds): $elapsed \n"
 fi
+
+total_end=`date +%s`
+total_elapsed=`expr $total_end - $start`
+echo "Total time (in h:m:s): $(printf '%02d:%02d:%02d\n' $(($total_elapsed/3600)) $(($total_elapsed%3600/60)) $(($total_elapsed%60)))"

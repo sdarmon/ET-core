@@ -3,7 +3,7 @@
 #(repeated sequences of 1 to 6 nucleotides) in the sequences; and the annotated genes that are intersecting
 # with the sequences.
 import sys
-import bisect
+import gc
 
 
 Arg = sys.argv[:]
@@ -26,7 +26,6 @@ with open(Arg[3], 'r') as f:
     for line in f:
         nb_comps+=1
         seq_consensium.append(line[:-1])
-
 
 
 #Function that count how many poly(A) a sequence has
@@ -84,8 +83,8 @@ def rev_comp(seq):
 
 #Function that counts the number of microsatellites in a sequence
 def count_microsat(seq):
-    vu = [[0 for _ in range(encode("TTTTT")+1)] for _ in range(len(seq))]
-    for i in range(6,(encode("TTTTT")+1)):
+    vu = [[0 for _ in range(encode("TTTT")+1)] for _ in range(len(seq))]
+    for i in range(6,(encode("TTTT")+1)):
         s = decode(i)
         if s == '' or is_a_microsat(s):
             continue
@@ -99,7 +98,7 @@ def count_microsat(seq):
     #Finding the highest sum of vu[*][i] for i in range(6,(encode("TTTTT")+1))
     m = 0
     seq_m = ''
-    for i in range(6,(encode("TTTTT")+1)):
+    for i in range(6,(encode("TTTT")+1)):
         s = decode(i)
         if s == '' or is_a_microsat(s):
             continue
@@ -111,54 +110,41 @@ def count_microsat(seq):
     #Finding the positions covered by a microsatellite
     pos_vu = [0 for _ in range(len(seq))]
     for i in range(len(seq)):
-        for j in range(6,(encode("TTTTT")+1)):
+        for j in range(6,(encode("TTTT")+1)):
             if vu[i][j] == 1:
                 pos_vu[i] = 1
+    vu.clear()
+    del vu
+    gc.collect()
     return (m, seq_m, sum(pos_vu)/len(seq))
 
-#Define the sorted lists, ranked according the max ab value of each comp (by decreasing order) with bisect
-microsat_comps = []
-polyA_comps = []
-potential_TE_comps = []
 
-for i in range(nb_comps):
-    #Reading the sequences from the comp.txt file and compute the average number of poly(A) and the ratio of microsatellites
-    seqs = []
-    joined_seqs = ''
-    total_poly = 0
-    total_length = 0
-    ab_max = 0
-    with open(Arg[1] + str(i) + ".txt", 'r') as f:
-        for line in f:
-            if len(line) < 2:
-                break
-            L=line[:-1].split('\t')
-            seqs.append(L[1])
-            joined_seqs+= ' ' + L[1]
-            total_poly += count_poly(L[1])
-            total_length += len(L[1])
-            ab_max= max(ab_max, abundance[int(L[0])])
-    m, seq_m, r = count_microsat(joined_seqs)
 
-    if total_poly / len(seqs) >= 1:
-        bisect.insort(polyA_comps, ( -ab_max, i))
-    if r >= 0.2:
-        bisect.insort(microsat_comps, ( -ab_max, i))
-    if total_poly / len(seqs) < 1 and r < 0.2 :
-        bisect.insort(potential_TE_comps, ( -ab_max, i))
+with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
+    with open(Arg[4] + "_stretchAT.txt.temp", 'w') as f2:
+        with open(Arg[4] + "_others.txt.temp", 'w') as f3:
+            for i in range(nb_comps):
+                #Reading the sequences from the comp.txt file and compute the average number of poly(A) and the ratio of microsatellites
+                seqs = []
+                joined_seqs = ''
+                total_poly = 0
+                total_length = 0
+                ab_max = 0
+                with open(Arg[1] + str(i) + ".txt", 'r') as f:
+                    for line in f:
+                            if len(line) < 2:
+                                break
+                            L=line[:-1].split('\t')
+                            seqs.append(L[1])
+                            joined_seqs+= ' ' + L[1]
+                            total_poly += count_poly(L[1])
+                            total_length += len(L[1])
+                            ab_max= max(ab_max, abundance[int(L[0])])
+                    m, seq_m, r = count_microsat(joined_seqs)
 
-#Writing the output files
-with open(Arg[4] + "_microsat.txt", 'w') as f:
-    f.write("Comp_ID\tSeq_consensus\tMax abundance\n")
-    for el in microsat_comps:
-        f.write(f"{el[1]}\t{seq_consensium[el[1]]}\t{-el[0]}\n")
-
-with open(Arg[4] + "_stretchA.txt", 'w') as f:
-    f.write("Comp_ID\tSeq_consensus\tMax abundance\n")
-    for el in polyA_comps:
-        f.write(f"{el[1]}\t{seq_consensium[el[1]]}\t{-el[0]}\n")
-
-with open(Arg[4] + "_potential_TE.txt", 'w') as f:
-    f.write("Comp_ID\tSeq_consensus\tMax abundance\n")
-    for el in potential_TE_comps:
-        f.write(f"{el[1]}\t{seq_consensium[el[1]]}\t{-el[0]}\n")
+                if total_poly / len(seqs) >= 1:
+                    f1.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+                if r >= 0.33:
+                    f2.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+                if total_poly / len(seqs) < 1 and r < 0.33 :
+                    f3.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
