@@ -9,6 +9,8 @@ start=`date +%s`
 P="8"
 K="41"
 D_NT="10"
+T=""
+H="0"
 READS_1=""
 READS_2=""
 OUTDIR=""
@@ -26,6 +28,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         -d)
             D_NT="$2"
+            shift 2
+            ;;
+        -t)
+            T="$2"
+            shift 2
+            ;;
+        -h)
+            H="$2"
             shift 2
             ;;
         --reads1)
@@ -50,7 +60,7 @@ done
 #If READS_1, READS_2 or OUTDIR are not set, exit
 if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" ]]; then
     echo "Use: $0  --reads1 <reads1.fastq[.gz]> --reads2 <reads2.fastq[.gz]> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
-    echo "Default values: -p 1 -k 41 -d 10"
+    echo "Default values: -p 8 -k 41 -d 10"
     exit 1
 fi
 
@@ -95,8 +105,8 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
 
   ##Build the bin for the filtering_low_ab_percent function
   echo "Building the bin for the filtering_low_ab_percent function..."
-  cargo build --release --manifest-path ${BIN_DIR}/at_compessor/Cargo.toml
-  cp ${BIN_DIR}/at_compessor/target/release/at_compessor ${BIN_DIR}/homopolymorphic_compression.exe
+  cargo build --release --manifest-path ${BIN_DIR}/at_compressor/Cargo.toml
+  cp ${BIN_DIR}/at_compressor/target/release/at_compressor ${BIN_DIR}/homopolymorphic_compression.exe
 
   g++ -O3 -g ${BIN_DIR}/graph.cpp ${BIN_DIR}/ponderation.cpp -o ${BIN_DIR}/graph.exe
   g++ -O3 -g ${BIN_DIR}/graph.cpp ${BIN_DIR}/agglo.cpp -o ${BIN_DIR}/agglo.exe
@@ -104,7 +114,7 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
   python3 -m venv venv
   source ${WORK_DIR}/venv/bin/activate
   pip install -r requirements.txt
-
+  deactivate
 
   end=`date +%s`
   elapsed=`expr $end - $begin`
@@ -113,11 +123,13 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
 fi
 
 
+  source ${WORK_DIR}/venv/bin/activate
+
 if [[ -z "${SKIP_FASTP}" ]]; then
   ##FastP of the reads to remove the poly(A) tails
   echo "FastP of the reads ..."
 
-  FastP \
+  fastp \
       --detect_adapter_for_pe \
       --trim_poly_g \
       --trim_poly_x \
@@ -145,7 +157,9 @@ if [[ -z "${SKIP_HC}" ]]; then
 
     ##Compute the DGB with bcalm
     echo "DGB with bcalm ..."
-    ls -1 ${DATA_DIR}/hc_1.fa ${DATA_DIR}/hc_2.fa > ${DATA_DIR}/list_reads
+    #ls -1 ${DATA_DIR}/hc_1.fa ${DATA_DIR}/hc_2.fa > ${DATA_DIR}/list_reads
+    echo "hc_1.fa" > ${DATA_DIR}/list_reads
+    echo "hc_2.fa" >> ${DATA_DIR}/list_reads
   bcalm \
       -in ${DATA_DIR}/list_reads \
       -kmer-size ${K} \
@@ -157,7 +171,7 @@ fi
 
 
 if [[ -z "${SKIP_FILTERING}" ]]; then
-awk -f bcalm_unitig_to_edges.awk ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa > ${DATA_DIR}/graph/hc_1_hc_2_k${K}.edges
+awk -f ${BIN_DIR}/bcalm_unitig_to_edges.awk ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa > ${DATA_DIR}/graph/hc_1_hc_2_k${K}.edges
 awk '/^>/ {id = substr($1, 2); next } {print id "\t" $0}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa > ${DATA_DIR}/graph/hc_1_hc_2_k${K}.nodes
 awk '/^>/ {ab = substr($4, 6); print ab}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa > ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance
   end=`date +%s`
@@ -189,7 +203,8 @@ if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
       ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
       ${D_NT} \
       -k ${K}  \
-      -o ${DATA_DIR}/graph/outputNodes.txt
+      -o ${DATA_DIR}/graph/outputNodes.txt  \
+      -h ${H}
 
 
   end=`date +%s`
@@ -201,9 +216,9 @@ fi
 if [[ -z "${SKIP_THRESHOLD}" ]]; then
   ##Compute the threshold
   echo "Threshold of the nodes..."
-      T=$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
-      # Update the T variable in the environment.sh file
-      #sed -i "s/^T=.*/T=${T}/" "${ENV}"
+      if [[ -z "${T}" ]]; then
+        T=$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
+      fi
       echo "T=${T}"
 
 
@@ -279,7 +294,7 @@ if [[ -z "${SKIP_INDUCED}" ]]; then
      awk '{print $3}' FS='\t' ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt | sed 's/,/\t/g' > ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt
     python3 ${BIN_DIR}/connecting_to_edges.py ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt  > ${RESULTS_DIR}/induced_cores_subgraph/connected.edges
 
-    end =`date +%s`
+    end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
     echo "Analysis time (in seconds): $elapsed \n"
@@ -288,7 +303,7 @@ fi
 
 
 if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
-  echo ("De novo classification of the extended_t_cores... \n")
+  echo "De novo classification of the extended_t_cores... \n"
     python3 ${BIN_DIR}/analysis_comp_de_novo.py \
         ${BASE_DIR}/comp \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \

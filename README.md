@@ -1,12 +1,23 @@
 # Extented-t-core
 
-This repository contains the code to *de novo* compute the extended-t-cores of a compacted de Bruijn graph built from short reads RNA-seq.
-From the extended-t-cores, we can propose potential Transposable Elements (TEs) candidates.
+This repository contains the code to *de novo* compute the **extended-t-cores** of a 
+compacted de Bruijn graph built from short reads RNA-seq.
+
+The **extended-t-cores** conceptually correspond to the dense regions
+of the compacted de Bruijn graph due to the presence of inexact repeated sequences
+in the transcriptome. There are defined as the maximal subgraphs of the compacted de
+Bruijn graph where all the unitigs have a high **extended degree**, a generalization
+of the degree of a graph node that counts the number of neighbors at distance at
+most `d` nucleotides (by default, `d=10`).
+
+
+
+From these extended-t-cores, we can identify inexact repeats of the transcriptome,
+and we can propose _de novo_ Transposable Elements (TEs) candidates.
 
 A second script is available to compare the extended-t-cores to a TE consensus library,
-such as the one from the **DFAM** database.
+such as the one from the **DFAM** database (see last section for TEs extraction).
 
-TBD: Incomplete
 
 ## *De novo* extented-t-cores computing
 
@@ -81,7 +92,7 @@ The output directory will contain the following files and directories:
     ├── venv/
     └── bin/
 
-### Binary version (without dependencies)
+### Binary version (without dependencies -> soon be replaced with a docker image)
 
 ```
 bash extented-t-core_binaries.sh \
@@ -103,9 +114,9 @@ bash extented-t-core_binaries.sh \
 
 ### Code example (with dependencies built)
 
-TBD
+Will be released soon.
 
-### Binary version (without dependencies)
+### Binary version (without dependencies -> soon be replaced with a docker image)
 
 ```
 bash te_analysis.sh \
@@ -153,7 +164,32 @@ The output directory will have the following additional files and directories:
         └── count_TE_TECOUNT.txt
 
 
-### Script to extract the TE consensus from the DFAM database
+### Scripts to extract the TE consensus from the DFAM database
+
+#### Quering of the DFAM database online
+
+The DFAM database can be queried online to extract the TE consensus sequences for a given species 
+by going to the following link : https://dfam.org/browse?classification=root%25253BInterspersed_Repeat%25253BTransposable_Element&clade_ancestors=true&clade_descendants=true
+
+Then, you just need to specify the species name in the **Taxon** field, 
+to get the list of its TE consensus sequences. One can download the results
+as a fasta file, using the **FASTA** bouton at the bottom of the page.
+
+With this link, the following options should be checked :
+- Classification : *Interspersed_Repeat;Transposable_Element*
+- Ancestors : *Checked*
+- Descendants : *Checked*
+
+#### Quering of the DFAM database with Curl API
+
+The DFAM database can be queried online to extract the TE consensus sequences for a given species. 
+This can be done using curl command. More details on the API can be found here : https://dfam.org/releases/Dfam_3.8/apidocs/
+
+
+
+#### Local extraction of the TE consensus from the DFAM database
+
+The DFAM database can be downloaded and queried locally to extract the TE consensus sequences for any given species.
 
 Download the partitions of the **Dfam** database corresponding the studied
 species (read thier README) into a `${LIBRARY_DIR}` : https://www.dfam.org/releases/current/families/FamDB/
@@ -169,9 +205,7 @@ extended-t-core project.
   --curated \
   --descendants \
   --ancestors \
-  "${SPE_NAME}" --format fasta_name \
-   | sed 's/#/\t/g' \
-   | sed 's/ @/\t/g'  > ${DFAM_FA}
+  "${SPE_NAME}" --format fasta_name
 ```
 Where Parameters :
 - `-i` : path to the famdb installation

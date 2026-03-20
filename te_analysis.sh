@@ -524,6 +524,9 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
     echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${BASE_DIR}/analysis_comp_all.txt.sorted
     sort -k1,1n ${BASE_DIR}/core_potential_TE_unsorted.txt  | sort -u >> ${BASE_DIR}/analysis_comp_all.txt.sorted
 
+    #Get the overall alignment rate from the bowtie2 output
+    RATE=$(awk '$2==" overall alignment rate" {print $1}' FS="%" ${BASE_DIR}/bowtie2_output_unitigs.txt)
+
 
     #Get the ROC curves for the consensus sequences
     python3 ${BIN_DIR}/seq_cons_roc_curve.py \
@@ -532,7 +535,8 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
         ${BASE_DIR}/aligned_consensus.txt \
         ${BASE_DIR}/comp \
         ${RESULTS_DIR}/output_roc_curve \
-        ${BASE_DIR}/all_unitigs_annotated.nodes
+        ${BASE_DIR}/all_unitigs_annotated.nodes \
+        ${RATE}
 
 
     #Now idem with the 100 first comps
@@ -549,7 +553,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
 
     rm ${BASE_DIR}/core_potential_TE_100_unsorted.txt
     #Getting the sequences from ${RESULTS_DIR}/other_cores_list_100.txt
-    awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}' FS="\t" ${RESULTS_DIR}/other_cores_list_100.txt > ${BASE_DIR}/core_potential_TE_100.fa
+    awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}'  ${RESULTS_DIR}/other_cores_list_100.txt > ${BASE_DIR}/core_potential_TE_100.fa
     #Align the consensus sequences to the Dfam TE library with bowtie2
     ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
       -a \
@@ -561,6 +565,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
       --dovetail \
       -X 500 -S ${BASE_DIR}/alignment_consensus_100.sam \
       -U ${BASE_DIR}/core_potential_TE_100.fa &> ${BASE_DIR}/bowtie2_output_consensus_100.txt
+
 
     ${BIN_DIR}/samtools view -bS \
       ${BASE_DIR}/alignment_consensus_100.sam \
@@ -577,7 +582,54 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
         ${BASE_DIR}/aligned_consensus_100.txt \
         ${BASE_DIR}/comp \
         ${RESULTS_DIR}/output_roc_curve_100 \
-        ${BASE_DIR}/all_unitigs_annotated.nodes
+        ${BASE_DIR}/all_unitigs_annotated.nodes \
+        ${RATE}
+
+
+      #Now idem with the all comps
+        echo "Analysis of all comp consensus prediction..."
+        awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_all_unsorted.txt
+        awk 'NR>1  {print $1,$2,$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_all_unsorted.txt
+        awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_all_unsorted.txt
+
+        echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/all_cores_list.txt
+        sort -k3,3gr ${BASE_DIR}/core_all_unsorted.txt | uniq >> ${RESULTS_DIR}/all_cores_list.txt
+
+        echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/all_cores_list.txt.sorted
+        sort -k1,1n ${BASE_DIR}/core_all_unsorted.txt | uniq >> ${RESULTS_DIR}/all_cores_list.txt.sorted
+
+        rm ${BASE_DIR}/core_all_unsorted.txt
+        #Getting the sequences from ${RESULTS_DIR}/all_cores_list.txt
+        awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}'  ${RESULTS_DIR}/all_cores_list.txt > ${BASE_DIR}/core_all.fa
+        #Align the consensus sequences to the Dfam TE library with bowtie2
+        ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
+          -a \
+          -f \
+          -p 8 \
+          --time \
+          --very-sensitive \
+          -x TE_Dfam_${SPE} \
+          --dovetail \
+          -X 500 -S ${BASE_DIR}/alignment_consensus_all.sam \
+          -U ${BASE_DIR}/core_all.fa &> ${BASE_DIR}/bowtie2_output_consensus_all.txt
+
+    ${BIN_DIR}/samtools view -bS \
+      ${BASE_DIR}/alignment_consensus_all.sam \
+      > ${BASE_DIR}/alignment_consensus_all.bam
+
+    python3 ${BIN_DIR}/filter_bam.py \
+      ${BASE_DIR}/alignment_consensus_all.bam \
+      ${BASE_DIR}/aligned_consensus_all.txt
+
+    #Get the ROC curves for the consensus sequences
+    python3 ${BIN_DIR}/seq_cons_roc_curve.py \
+        ${RESULTS_DIR}/all_cores_list.txt \
+        ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
+        ${BASE_DIR}/aligned_consensus_all.txt \
+        ${BASE_DIR}/comp \
+        ${RESULTS_DIR}/output_roc_curve_all \
+        ${BASE_DIR}/all_unitigs_annotated.nodes \
+        ${RATE}
 
   #Look at the max extended degree of the missed TEs to understand if they are in small components or isolated nodes
   #This solution is quick and dirty, it should be optimised with a python script later

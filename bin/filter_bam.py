@@ -78,7 +78,7 @@ def main():
     parser.add_argument('input_bam', help='The input bam file')
     parser.add_argument('output_txt', help='The output txt file')
     #Add the option -b to put a flag as true for bam file
-    parser.add_argument('-b', action='store_true', help='The input file is a bam file')
+    parser.add_argument('-b', action='store_true', help='The output file is a bam file')
     args = parser.parse_args()
     #If an argument is missing print the help
     if args.input_bam is None or args.output_txt is None:

@@ -8,6 +8,8 @@ start=`date +%s`
 P="8"
 K="41"
 D_NT="10"
+T=""
+H="0"
 READS_1=""
 READS_2=""
 OUTDIR=""
@@ -25,6 +27,14 @@ while [[ $# -gt 0 ]]; do
             ;;
         -d)
             D_NT="$2"
+            shift 2
+            ;;
+        -t)
+            T="$2"
+            shift 2
+            ;;
+        -h)
+            H="$2"
             shift 2
             ;;
         --reads1)
@@ -160,7 +170,7 @@ if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
       ${D_NT} \
       -k ${K}  \
       -o ${DATA_DIR}/graph/outputNodes.txt \
-      -h 2
+      -h ${H}
 
 
   end=`date +%s`
@@ -172,9 +182,9 @@ fi
 if [[ -z "${SKIP_THRESHOLD}" ]]; then
   ##Compute the threshold
   echo "Threshold of the nodes..."
-      T=6 #$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
-      # Update the T variable in the environment.sh file
-      #sed -i "s/^T=.*/T=${T}/" "${ENV}"
+      if [[ -z "${T}" ]]; then
+        T=$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
+      fi
       echo "T=${T}"
 
 
@@ -192,7 +202,7 @@ if [[ -z "${SKIP_AGGLO}" ]]; then
    for file in ${BASE_DIR}/*; do
         rm -r ${file}
       done
-shopt -u nullglob
+  shopt -u nullglob
 
   ${BIN_DIR}/agglo.exe \
       ${DATA_DIR}/graph/outputNodes.txt \
@@ -206,11 +216,10 @@ shopt -u nullglob
   elapsed=`expr $end - $begin`
   begin=`date +%s`
   echo "Agglomeration time (in seconds): $elapsed \n"
-
 fi
 
 if [[ -z "${SKIP_CONSENSUS}" ]]; then
-   echo "Representative sequences... \n "
+   echo "Computing the representative sequences of the components..."
     ##The number of components to compute
     MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
     shopt -s nullglob
@@ -263,17 +272,17 @@ if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
         ${RESULTS_DIR}/seq_consensium.txt \
         ${RESULTS_DIR}/analysis_comp
 
-printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/microsatellite_cores_list.txt
-sort -k3,3nr ${RESULTS_DIR}/analysis_comp_microsat.txt.temp >> ${RESULTS_DIR}/microsatellite_cores_list.txt
-rm ${RESULTS_DIR}/analysis_comp_microsat.txt.temp
+  printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/microsatellite_cores_list.txt
+  sort -k3,3nr ${RESULTS_DIR}/analysis_comp_microsat.txt.temp >> ${RESULTS_DIR}/microsatellite_cores_list.txt
+  rm ${RESULTS_DIR}/analysis_comp_microsat.txt.temp
 
-printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchAT_cores_list.txt
-sort -k3,3nr ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp >> ${RESULTS_DIR}/stretchAT_cores_list.txt
-rm ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp
+  printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchAT_cores_list.txt
+  sort -k3,3nr ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp >> ${RESULTS_DIR}/stretchAT_cores_list.txt
+  rm ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp
 
-printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/other_cores_list.txt
-sort -k3,3nr ${RESULTS_DIR}/analysis_comp_others.txt.temp >> ${RESULTS_DIR}/other_cores_list.txt
-rm ${RESULTS_DIR}/analysis_comp_others.txt.temp
+  printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/other_cores_list.txt
+  sort -k3,3nr ${RESULTS_DIR}/analysis_comp_others.txt.temp >> ${RESULTS_DIR}/other_cores_list.txt
+  rm ${RESULTS_DIR}/analysis_comp_others.txt.temp
 
       end=`date +%s`
       elapsed=`expr $end - $begin`

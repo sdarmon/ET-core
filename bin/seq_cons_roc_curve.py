@@ -46,12 +46,18 @@ def make_segments(x, y):
     segments = np.concatenate([points[:-1], points[1:]], axis=1)
     return segments
 
+def size_to_proba(size,rate):
+    #From a size number of pick elements (of probability rate) compute the probability to pick at least one of them
+    return 1-(1-rate)**size
+
 Arg = sys.argv[:]
 
-if len(Arg) not in [7]:
-    print("Use : " + Arg[0] + " analysis_comp_potential_TE.txt TE_coverage_count_ab_filtered.txt aligned_Dfam_consensus.txt comp_annotating_prefix output_roc_curve.png unitigs.nodes")
+if len(Arg) not in [8]:
+    print("Use : " + Arg[0] + " analysis_comp_potential_TE.txt TE_coverage_count_ab_filtered.txt aligned_Dfam_consensus.txt comp_annotating_prefix output_roc_curve.png unitigs.nodes rate")
     exit()
 
+
+rate=float(Arg[7])/100
 #Reading TE_coverage_count_ab_filtered.txt to get the set of true TEs (positives)
 true_TE_set = set()
 with open(Arg[2], 'r') as f:
@@ -396,6 +402,7 @@ norm = LogNorm(vmin=c.min(), vmax=c.max()) if (c > 0).all() and (c.max() / c.min
 
 #Normalise the size list into a np array from the size 40 to 240
 size = np.array(size)
+proba_comp = [size_to_proba(s,rate) for s in size]
 size = (size - size.min()) / (size.max() - size.min()) * 200 + 40
 
 
@@ -508,6 +515,17 @@ c = np.array(actual_ex_deg)
 #Complete size_ex_deg with 1
 size_ex_deg += [1]*(len(recall_list)-len(size_ex_deg))
 #Normalise the size list into a np array from the size 40 to 240
+proba_comp = [size_to_proba(s,rate) for s in size_ex_deg]
+
+#Add up the proba_comp from the start to the ithh element to get the cumulative proba_comp for each point of the curve
+precision_proba_cumul = []
+cumul = 0
+tot = 0
+for p in proba_comp:
+    cumul += p
+    tot+= 1
+    precision_proba_cumul.append(cumul/tot)
+precision_proba_cumul=np.array(precision_proba_cumul)
 size_ex_deg = np.array(size_ex_deg)
 size_ex_deg = (size_ex_deg - size_ex_deg.min()) / (size_ex_deg.max() - size_ex_deg.min()) * 200 + 40
 
@@ -519,8 +537,10 @@ ax.set_xlim(0.0, 1.0)
 ax.set_ylim(0.0, 1.0)
 sc = ax.scatter(recall_list, precision_list, c=c, cmap='plasma', norm=norm, s=size_ex_deg, edgecolors='k')
 #add a vertical line at the last recall value with a dashed line saying "last recall with extended t-cores"
-ax.axvline(x=last_r, color='green', linestyle='--', label='last recall with extended t-cores')
+ax.axvline(x= last_r, color='green', linestyle='--', label='last recall with extended t-cores')
 
+#Add a continuous red line connecting precision_proba_cumul,recall_list
+ax.plot(recall_list, precision_proba_cumul, color='red', label='Cumulative theoretical probability')
 ax.set_xlabel('Recall')
 ax.set_ylabel('Precision')
 
