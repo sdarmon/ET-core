@@ -3,6 +3,12 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::process;
 
+// Compression imports
+use flate2::Compression;
+use flate2::read::GzDecoder;
+use flate2::read::MultiGzDecoder;
+use flate2::write::GzEncoder;
+
 fn main() {
     // 1. Parse command line arguments
     let args: Vec<String> = env::args().collect();
@@ -21,18 +27,22 @@ fn main() {
         }
     };
 
-    // 2. Setup fast buffered I/O
-    let in_file = File::open(input_path).unwrap_or_else(|e| {
-        eprintln!("Error opening input file: {}", e);
-        process::exit(1);
-    });
-    let mut reader = BufReader::with_capacity(128 * 1024, in_file);
+    // --- INPUT ---
+    let in_file = File::open(input_path).expect("Error opening input");
+    let mut reader: Box<dyn BufRead> = if input_path.ends_with(".gz") {
+        Box::new(BufReader::with_capacity(128 * 1024, MultiGzDecoder::new(in_file)))
+    } else {
+        Box::new(BufReader::with_capacity(128 * 1024, in_file))
+    };
 
-    let out_file = File::create(output_path).unwrap_or_else(|e| {
-        eprintln!("Error creating output file: {}", e);
-        process::exit(1);
-    });
-    let mut writer = BufWriter::with_capacity(128 * 1024, out_file);
+    // --- OUTPUT ---
+    let out_file = File::create(output_path).expect("Error creating output");
+    let mut writer: Box<dyn Write> = if output_path.ends_with(".gz") {
+        let encoder = GzEncoder::new(out_file, Compression::default());
+        Box::new(BufWriter::with_capacity(128 * 1024, encoder))
+    } else {
+        Box::new(BufWriter::with_capacity(128 * 1024, out_file))
+    };
 
     // 3. Pre-allocate vectors so we don't allocate memory during the loop
     let mut header = Vec::new();
@@ -83,10 +93,10 @@ fn main() {
             }
 
             // Check if the current nucleotide is A or T (case-insensitive just in case)
-            let is_at = true; //b == b'A' || b == b'T' || b == b'a' || b == b't';
+            //let is_at = b == b'A' || b == b'T' || b == b'a' || b == b't';
             
             // Keep the base if it is NOT an A/T, OR if the streak count is within our window `w`
-            if !is_at || count <= w {
+            if count <= w { //if !is_at || count <= w {
                 out_seq.push(b);
             }
         }
@@ -95,4 +105,7 @@ fn main() {
         out_seq.push(b'\n');
         writer.write_all(&out_seq).unwrap();
     }
+
+    // Explicitly flush to ensure the Gzip stream is finished correctly
+    writer.flush().unwrap();
 }

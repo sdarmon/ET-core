@@ -39,7 +39,7 @@ done
 
 #If READS_1, READS_2 or OUTDIR are not set, exit
 if [[ -z "$DFAM_FA"  || -z "$OUTDIR" ]]; then
-    echo "Use: $0  --te_cons <dfam_consensus.fasta> -O <output_dir> [-p <threads>] [-k <k-mer size>]"
+    echo "Use: $0  --te-cons <dfam_consensus.fasta> -O <output_dir> [-p <threads>] [-k <k-mer size>]"
     echo "Default values: -p 8 -k 41 "
     exit 1
 fi
@@ -128,7 +128,7 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
   # -S : output SAM file
   # -1 : first read file
   # -2 : second read file paired with the first
-  ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
+  ${BIN_DIR}/bowtie2/bowtie2 --wrapper basic-0 \
       -a \
       -q \
       -p 8 \
@@ -138,8 +138,8 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
       --dovetail \
       -X 500 \
       -S ${RESULTS_DIR}/alignment/READS.sam \
-      -1 ${DATA_DIR}/R1.fastp \
-      -2 ${DATA_DIR}/R2.fastp &> ${RESULTS_DIR}/alignment/bowtie2_output_reads.txt
+      -1 ${DATA_DIR}/R1.fastp.gz \
+      -2 ${DATA_DIR}/R2.fastp.gz &> ${RESULTS_DIR}/alignment/bowtie2_output_reads.txt
 
   #Convert SAM to BAM
   #Parameters :
@@ -150,6 +150,8 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
   ${BIN_DIR}/samtools view -bS -F 256 \
       ${RESULTS_DIR}/alignment/READS.sam \
       > ${RESULTS_DIR}/alignment/READS.bam
+
+  rm ${RESULTS_DIR}/alignment/READS.sam
   ${BIN_DIR}/samtools  sort \
       ${RESULTS_DIR}/alignment/READS.bam \
       -o ${RESULTS_DIR}/alignment/READS_sorted.bam
@@ -217,6 +219,9 @@ if [[ -z "${SKIP_BOWTIE_COMPS}" ]]; then
           ${BASE_DIR}/alignment_${i}/comp${i}.sam \
           > ${BASE_DIR}/alignment_${i}/comp${i}.bam
 
+
+        rm ${BASE_DIR}/alignment_${i}/comp${i}.sam
+
       python3 ${BIN_DIR}/filter_bam.py \
           ${BASE_DIR}/alignment_${i}/comp${i}.bam \
           ${BASE_DIR}/aligned_Dfam${i}.txt
@@ -252,7 +257,7 @@ if [[ -z "${SKIP_BOWTIE_UNITIGS}" ]]; then
   python3 ${BIN_DIR}/reads_to_align.py ${BASE_DIR}/all_unitigs.txt ${BASE_DIR}/all_unitigs.fa 0
 
   ###Bowtie2 alignment of the unitigs to the Dfam TE library
-  ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
+  ${BIN_DIR}/bowtie2/bowtie2 --wrapper basic-0 \
       -a \
       -f \
       -p 8 \
@@ -266,6 +271,8 @@ if [[ -z "${SKIP_BOWTIE_UNITIGS}" ]]; then
   ${BIN_DIR}/samtools  view -bS \
       ${BASE_DIR}/alignment_unitigs.sam \
       > ${BASE_DIR}/alignment_unitigs.bam
+
+  rm ${BASE_DIR}/alignment_unitigs.sam
 
     echo "Filter the reads to only keep the best mapped ones"
 
@@ -310,28 +317,28 @@ fi
 #endregion
 
 #region TE COUNTING WITH TECOUNT OR FEATURECOUNTS+BEDTOOLS
-if [[ -z "${SKIP_COUNT_EXPRESSED_TE}" ]]; then
-
-#    OLD  COMMAND WITH TECOUNT :
-#    echo "TE counting with TeCount ..."
-#    Parameters :
-#    -rosette : file with the exact TE consensus names and an asigned label of their family
-#    -column : column number in the rosette file containing the TE family names (column 1 doesn"t work)
-#    -TE_fasta : fasta file with the TE consensus sequences
-#    -count : output file with the counts of each TE family
-#    -bowtie2 : use bowtie2 alignment
-#    -RNA : first reads file
-#    -RNApair : second reads file
-#    -insert : max insert size of the paired-end reads, here 500 bp to match the bowtie2 parameters in over steps
-        ${BIN_DIR}/TEcount.py -rosette ${DATA_DIR}/rosette.fa  \
-            -column 2 \
-            -TE_fasta ${DFAM_FA}.no_tab.fa \
-              -count ${DATA_DIR}/count_TE_TECOUNT.txt \
-            -bowtie2 \
-            -RNA ${DATA_DIR}/R1.fastp \
-            -RNApair ${DATA_DIR}/R2.fastp \
-            -insert 500
-fi
+#if [[ -z "${SKIP_COUNT_EXPRESSED_TE}" ]]; then
+#
+##    OLD  COMMAND WITH TECOUNT :
+##    echo "TE counting with TeCount ..."
+##    Parameters :
+##    -rosette : file with the exact TE consensus names and an asigned label of their family
+##    -column : column number in the rosette file containing the TE family names (column 1 doesn"t work)
+##    -TE_fasta : fasta file with the TE consensus sequences
+##    -count : output file with the counts of each TE family
+##    -bowtie2 : use bowtie2 alignment
+##    -RNA : first reads file
+##    -RNApair : second reads file
+###    -insert : max insert size of the paired-end reads, here 500 bp to match the bowtie2 parameters in over steps
+##        ${BIN_DIR}/TEcount.py -rosette ${DATA_DIR}/rosette.fa  \
+##            -column 2 \
+##            -TE_fasta ${DFAM_FA}.no_tab.fa \
+##              -count ${DATA_DIR}/count_TE_TECOUNT.txt \
+##            -bowtie2 \
+##            -RNA ${DATA_DIR}/R1.fastp \
+##            -RNApair ${DATA_DIR}/R2.fastp \
+##            -insert 500
+#fi
 
 if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
     echo "TE counting using bowtie2 all alignment of the reads to the Dfam TE library ..."
@@ -508,9 +515,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
       ${BASE_DIR}/alignment_consensus.sam \
       > ${BASE_DIR}/alignment_consensus.bam
 
-#    ${SAMTOOLS_BIN} view \
-#          ${BASE_DIR}/alignment_consensus.sam \
-#          > ${BASE_DIR}/aligned_consensus.txt
+    rm ${BASE_DIR}/alignment_consensus.sam
 
     python3 ${BIN_DIR}/filter_bam.py \
       ${BASE_DIR}/alignment_consensus.bam \

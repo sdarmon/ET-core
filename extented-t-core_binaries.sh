@@ -105,18 +105,19 @@ if [[ -z "${SKIP_FASTP}" ]]; then
       --trim_poly_x \
       --thread ${P} \
       --poly_x_min_len 5 \
+      --compression 4 \
       --html ${RESULTS_DIR}/fastp_log.html \
       --in1 ${READS_1} \
       --in2 ${READS_2} \
-      --out1 ${DATA_DIR}/R1.fastp \
-      --out2 ${DATA_DIR}/R2.fastp
+      --out1 ${DATA_DIR}/R1.fastp.gz \
+      --out2 ${DATA_DIR}/R2.fastp.gz
 fi
 
 if [[ -z "${SKIP_HC}" ]]; then
   ##Compute the HC
   echo "HC of the reads ..."
-  ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R1.fastp ${DATA_DIR}/hc_1.fa 5
-  ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R2.fastp ${DATA_DIR}/hc_2.fa 5
+  ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R1.fastp.gz ${DATA_DIR}/hc_1.fa.gz 5
+  ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R2.fastp.gz ${DATA_DIR}/hc_2.fa.gz 5
 
   end=`date +%s`
   elapsed=`expr $end - $begin`
@@ -125,7 +126,7 @@ if [[ -z "${SKIP_HC}" ]]; then
 
   ##Compute the DGB with bcalm
   echo "DGB with bcalm ..."
-  ls -1 ${DATA_DIR}/hc_1.fa ${DATA_DIR}/hc_2.fa > ${DATA_DIR}/list_reads
+  ls -1 ${DATA_DIR}/hc_1.fa.gz ${DATA_DIR}/hc_2.fa.gz > ${DATA_DIR}/list_reads
   ${BIN_DIR}/bcalm \
       -in ${DATA_DIR}/list_reads \
       -kmer-size ${K} \

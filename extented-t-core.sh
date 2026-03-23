@@ -10,7 +10,7 @@ P="8"
 K="41"
 D_NT="10"
 T=""
-H="0"
+H="2"
 READS_1=""
 READS_2=""
 OUTDIR=""
@@ -60,7 +60,7 @@ done
 #If READS_1, READS_2 or OUTDIR are not set, exit
 if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" ]]; then
     echo "Use: $0  --reads1 <reads1.fastq[.gz]> --reads2 <reads2.fastq[.gz]> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
-    echo "Default values: -p 8 -k 41 -d 10"
+    echo "Default values: -p 8 -k 41 -d 10 -h 2"
     exit 1
 fi
 
@@ -104,7 +104,7 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
   cp ${BIN_DIR}/filtering_low_ab_percent/target/release/filtering_low_ab_percent ${BIN_DIR}/filtering_low_ab_percent.exe
 
   ##Build the bin for the filtering_low_ab_percent function
-  echo "Building the bin for the filtering_low_ab_percent function..."
+  echo "Building the bin for the homopolymorphic compression..."
   cargo build --release --manifest-path ${BIN_DIR}/at_compressor/Cargo.toml
   cp ${BIN_DIR}/at_compressor/target/release/at_compressor ${BIN_DIR}/homopolymorphic_compression.exe
 
@@ -135,11 +135,12 @@ if [[ -z "${SKIP_FASTP}" ]]; then
       --trim_poly_x \
       --thread ${P} \
       --poly_x_min_len 5 \
+      -z 4 \
       --html ${RESULTS_DIR}/fastp_log.html \
       --in1 ${READS_1} \
       --in2 ${READS_2} \
-      --out1 ${DATA_DIR}/R1.fastp \
-      --out2 ${DATA_DIR}/R2.fastp
+      --out1 ${DATA_DIR}/R1.fastp.gz \
+      --out2 ${DATA_DIR}/R2.fastp.gz
 fi
 
 
@@ -147,8 +148,8 @@ fi
 if [[ -z "${SKIP_HC}" ]]; then
   ##Compute the HC
   echo "HC of the reads ..."
-    ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R1.fastp ${DATA_DIR}/hc_1.fa 5
-    ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R2.fastp ${DATA_DIR}/hc_2.fa 5
+    ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R1.fastp.gz ${DATA_DIR}/hc_1.fa.gz 5
+    ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R2.fastp.gz ${DATA_DIR}/hc_2.fa.gz 5
 
     end=`date +%s`
     elapsed=`expr $end - $begin`
@@ -158,8 +159,8 @@ if [[ -z "${SKIP_HC}" ]]; then
     ##Compute the DGB with bcalm
     echo "DGB with bcalm ..."
     #ls -1 ${DATA_DIR}/hc_1.fa ${DATA_DIR}/hc_2.fa > ${DATA_DIR}/list_reads
-    echo "hc_1.fa" > ${DATA_DIR}/list_reads
-    echo "hc_2.fa" >> ${DATA_DIR}/list_reads
+    echo "hc_1.fa.gz" > ${DATA_DIR}/list_reads
+    echo "hc_2.fa.gz" >> ${DATA_DIR}/list_reads
   bcalm \
       -in ${DATA_DIR}/list_reads \
       -kmer-size ${K} \
