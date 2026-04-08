@@ -271,7 +271,8 @@ if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
         ${BASE_DIR}/comp \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \
         ${RESULTS_DIR}/seq_consensium.txt \
-        ${RESULTS_DIR}/analysis_comp
+        ${RESULTS_DIR}/analysis_comp \
+        ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt
 
   printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/microsatellite_cores_list.txt
   sort -k3,3nr ${RESULTS_DIR}/analysis_comp_microsat.txt.temp >> ${RESULTS_DIR}/microsatellite_cores_list.txt

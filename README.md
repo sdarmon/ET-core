@@ -29,7 +29,8 @@ Currently, one can either directly use the binary version or recompile all the c
 - **Cargo** version 1.75.0 (for Rust compilation)
 - **gcc** version 12.2.0 (for C++ compilation)
 - **FastP** version 0.23.4
-- **BCALM 2**,version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
+- **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
+<!-- - **seqtk** version 1.4-r122 -->
 
 
 ### Code example (with dependencies built)

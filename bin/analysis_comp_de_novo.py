@@ -6,12 +6,13 @@ import sys
 import gc
 import re
 from collections import defaultdict
+from fontTools.misc.py23 import range
 from numpy.ma.core import sum
 
 Arg = sys.argv[:]
 
-if len(Arg) not in [5]:
-    print("Use : " + Arg[0] + " comp_prefix abundance_graph seq_consensus output_prefix")
+if len(Arg) not in [6]:
+    print("Use : " + Arg[0] + " comp_prefix abundance_graph seq_consensus output_prefix connecting_unitigs")
     exit()
 
 
@@ -38,6 +39,12 @@ def count_poly(seq):
             compt += 1
     return compt
 
+def count_poly_CG(seq):
+    compt = 0
+    for i in range(len(seq) - 4):
+        if seq[i:i+5] == 'CCCCC' or seq[i:i+5] == 'GGGGG':
+            compt += 1
+    return compt
 
 #Function that count the ratio of C/G in a sequence
 def count_CG(seq):
@@ -124,32 +131,127 @@ def count_microsat(seq):
 
     return (m, seq_m, ratio)
 
+#For each comp, we will compute its degree in the induced subgraph
+#and its maximal neighbor.
+adjacent = [[] for _ in range(nb_comps)]
+ids_save={}
+total_deg = 0
+with open(Arg[5],'r') as f :
+    for line in f:
+        if len(line) < 2:
+            break
+        L=line[:-1].split('\t')
+        id=int(L[0])
+        comps=L[2].split(',')
+        seen=set()
+        #ids_save[id]=(L[1],L[2])
+        for el in comps:
+            if el not in seen:
+                for el2 in seen:
+                    adjacent[int(el)].append((int(el2),id))
+                    adjacent[int(el2)].append((int(el),id))
+                    total_deg+=2
+                seen.add(el)
+
+mean_deg=total_deg/nb_comps
+
+max_neighboor=[[] for _ in range(nb_comps)]
+max_connection=[0 for _ in range(nb_comps)]
+for i in range(nb_comps):
+    nb_seen = {}
+    for (neigh,_) in adjacent[i]:
+        if neigh not in nb_seen:
+            nb_seen[neigh] = 1
+        else:
+            nb_seen[neigh]+=1
+    if nb_seen:
+        max_nb = max(nb_seen.values())
+        for neigh in nb_seen:
+            if nb_seen[neigh] == max_nb:
+                max_neighboor[i].append(neigh)
+                max_connection[i]=max_nb
+
+#Total output should look like :
+#ID \t Representative \t Repeat type \t TE likelihood \t Max extended degree \t Max abundance \t Number of adjacent extended-t-cores \t Strongly connected to
+#Where ID is the ID of the comp
+#Repeat type is A/T stretch; C/G stretch; Microsat (regex) XX%; others
+#TE likelihood is -; +; ++; +++; depending on the repeat type other metrics
+#Strongly connected to is the "ID (number of paths between them)"
+
+#Keep only what is before the last / of Arg[4] for base name
+l = Arg[4].split('/')
+base_name = l[0]
+for i in range(1, len(l)-1):
+    base_name=base_name+"/"+l[i]
 
 
 with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
-    with open(Arg[4] + "_stretchAT.txt.temp", 'w') as f2:
-        with open(Arg[4] + "_others.txt.temp", 'w') as f3:
-            for i in range(nb_comps):
-                #Reading the sequences from the comp.txt file and compute the average number of poly(A) and the ratio of microsatellites
-                seqs = []
-                joined_seqs = ''
-                total_poly = 0
-                total_length = 0
-                ab_max = 0
-                with open(Arg[1] + str(i) + ".txt", 'r') as f:
-                    for line in f:
-                            if len(line) < 2:
-                                break
-                            L=line[:-1].split('\t')
-                            seqs.append(L[1])
-                            joined_seqs+= ' ' + L[1]
-                            total_poly += count_poly(L[1])
-                            total_length += len(L[1])
-                            ab_max= max(ab_max, abundance[int(L[0])])
-                    m, seq_m, r = count_microsat(joined_seqs)
-                    if total_poly / len(seqs) >= 0.8:
-                        f2.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
-                    if r >= 0.2:
-                        f1.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\t{seq_m}\t{r}\n")
-                    if total_poly / len(seqs) < 0.8 and r < 0.2 :
-                        f3.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+    with open(base_name + "/extended_t_cores_summary.tsv", 'w') as f5:
+        f5.write("Id \t Representative \t Repeat_type \t TE_Score \t Max_extended_degree \t Max_abundance \t Core_connectivity \t Best_neighbour\n")
+        with open(Arg[4] + "_stretchAT.txt.temp", 'w') as f2:
+            with open(Arg[4] + "_stretchCG.txt.temp", 'w') as f4:
+                with open(Arg[4] + "_others.txt.temp", 'w') as f3:
+                    for i in range(nb_comps):
+                        #Reading the sequences from the comp.txt file and compute the average number of poly(A) and the ratio of microsatellites
+                        seqs = []
+                        joined_seqs = ''
+                        total_poly = 0
+                        total_CG = 0
+                        total_length = 0
+                        ab_max = 0
+                        score = 0
+                        deg_max = 0
+                        type_rep = ""
+                        with open(Arg[1] + str(i) + ".txt", 'r') as f:
+                            for line in f:
+                                    if len(line) < 2:
+                                        break
+                                    L=line[:-1].split('\t')
+                                    seqs.append(L[1])
+                                    joined_seqs+= ' ' + L[1]
+                                    total_poly += count_poly(L[1])
+                                    total_CG += count_poly_CG(L[1])
+                                    total_length += len(L[1])
+                                    deg_max=max(deg_max, int(L[2]))
+                                    ab_max= max(ab_max, abundance[int(L[0])])
+                        m, seq_m, r = count_microsat(joined_seqs)
+                        if total_poly / len(seqs) >= 0.75:
+                            f2.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+                            type_rep="A/T stretch"
+                            score+=1
+                        elif total_CG / len(seqs) >= 0.75:
+                            f4.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+                            type_rep="C/G stretch"
+                            #score-=1
+                        if r >= 0.2:
+                            f1.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\t{seq_m}\t{r}\n")
+                            texte="Microsat "+str(seq_m)+" ("+str(round(r*100))+"%)"
+                            if type_rep=="":
+                                type_rep= texte
+                            else:
+                                type_rep=type_rep+" and "+texte
+                        if total_poly / len(seqs) < 0.75 and  total_CG / len(seqs) < 0.75 and r < 0.2 :
+                            f3.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
+                            type_rep = "Potential TE"
+                            score+=1
+                        if len(adjacent[i]) > mean_deg :
+                            score+=1
+
+                        neigh_text="."
+                        if max_connection[i] > mean_deg/2 :
+                            score+=1
+                            link= max_connection[i]
+                            neigh = adjacent[i][0]
+                            neigh_text=f"{adjacent[i][0][0]}:{100*max_connection[i]/len(adjacent[i]):.1f}%"
+
+                        #Update the score
+                        score_texte=str(score)
+
+
+                        #Write in f5
+                        #ID \t Representative \t Repeat type \t TE likelihood \t Max extended degree \t Max abundance \t Number of adjacent extended-t-cores \t Strongly connected to
+                        #Where ID is the ID of the comp
+                        #Repeat type is A/T stretch; C/G stretch; Microsat (regex) XX%; others
+                        #TE likelihood is -; +; ++; +++; depending on the repeat type other metrics
+                        #Strongly connected to is the "ID (number of paths between them)"
+                        f5.write(f"{i}\t{seq_consensium[i]}\t{type_rep}\t{score_texte}\t{deg_max}\t{ab_max}\t{len(adjacent[i])}\t{neigh_text}\n")

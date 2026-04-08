@@ -188,8 +188,8 @@ if [[ -z "${SKIP_BOWTIE_COMPS}" ]]; then
   for ((i=0; i<$MAXI; i++))
   do
 
-      if (( i % step == 0 )); then
-          PERCENTAGE=$(( (i * 100) / MAXI ))
+      if (( (i + 1) % step == 0 )); then
+          PERCENTAGE=$(( ((i + 1) * 100) / MAXI ))
           echo "Processing component $i of $MAXI ($PERCENTAGE% complete)"
       fi
 
@@ -312,7 +312,7 @@ if [[ -z "${SKIP_ANA_ALIGN}" ]]; then
     end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
-    echo "Analysis of the unitigs alignment time (in seconds): $elapsed \n"
+    echo -e "Analysis of the unitigs alignment time (in seconds): $elapsed \n"
 fi
 #endregion
 
@@ -418,7 +418,7 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
     end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
-    echo "TE counting time (in seconds): $elapsed \n"
+    echo -e "TE counting time (in seconds): $elapsed \n"
 
 fi
 #endregion
@@ -436,12 +436,16 @@ if [[ -z "${SKIP_TE_VS_COMPS}" ]]; then
     done
     echo "Number of comps : ${MAXI}"
     :> ${RESULTS_DIR}/temp.txt
+    :> ${RESULTS_DIR}/TE_from_cores.txt
     for ((i=0; i<$MAXI; i++))
     do
       awk '$6 != "*"{print $6}' FS="\t" ${BASE_DIR}/comp${i}_annotated.nodes \
       | sed 's/; /\n/g' \
       | sort -u  >> ${RESULTS_DIR}/temp.txt
+
+      awk '$6!="*" {print $6}' FS="\t" ${BASE_DIR}/cores/comp${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> ${RESULTS_DIR}/TE_from_cores.txt
     done
+    sort -u ${RESULTS_DIR}/TE_from_cores.txt > ${RESULTS_DIR}/TE_from_cores_sorted.txt
     sort -u ${RESULTS_DIR}/temp.txt > ${RESULTS_DIR}/TE_in_comps.txt
     rm ${RESULTS_DIR}/temp.txt
 
@@ -485,7 +489,7 @@ if [[ -z "${SKIP_TE_VS_COMPS}" ]]; then
     end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
-    echo "TE counting time (in seconds): $elapsed \n"
+    echo -e "TE counting time (in seconds): $elapsed \n"
 fi
 #endregion
 
@@ -500,7 +504,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
     awk ' NR>1 {print $0}' ${RESULTS_DIR}/other_cores_list.txt | sort -k1,1n >> ${RESULTS_DIR}/other_cores_list.txt.sorted
 
     #Align the consensus sequences to the Dfam TE library with bowtie2
-    ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
+    ${BIN_DIR}/bowtie2/bowtie2 --wrapper basic-0 \
       -a \
       -f \
       -p 8 \
@@ -656,7 +660,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
     end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
-    echo "Consensus sequences analysis time (in seconds): $elapsed \n"
+    echo -e "Consensus sequences analysis time (in seconds): $elapsed \n"
 
     python3 ${BIN_DIR}/unitigs_roc_curve.py \
             ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
@@ -667,4 +671,4 @@ fi
 
 end_final=`date +%s`
 elapsed_final=`expr $end_final - $start`
-echo "Total TE analysis pipeline time (in seconds): $elapsed_final \n"
+echo -e "Total TE analysis pipeline time (in seconds): $elapsed_final \n"

@@ -3,7 +3,6 @@
 
 
 begin=`date +%s`
-start=`date +%s`
 
 
 P="8"
@@ -11,6 +10,7 @@ K="41"
 D_NT="10"
 T=""
 H="2"
+S=""
 READS_1=""
 READS_2=""
 OUTDIR=""
@@ -46,6 +46,14 @@ while [[ $# -gt 0 ]]; do
             READS_2="$2"
             shift 2
             ;;
+        --sample)
+            S="$2"
+            shift 2
+            ;;
+        --help)
+            HELP="True"
+            shift 1
+            ;;
         -O)
             OUTDIR="$2"
             shift 2
@@ -58,9 +66,24 @@ while [[ $# -gt 0 ]]; do
 done
 
 #If READS_1, READS_2 or OUTDIR are not set, exit
-if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" ]]; then
-    echo "Use: $0  --reads1 <reads1.fastq[.gz]> --reads2 <reads2.fastq[.gz]> -O <output_dir> [-p <threads>] [-k <k-mer size>] [-d <extended degree distance>]"
-    echo "Default values: -p 8 -k 41 -d 10 -h 2"
+if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} ]]; then
+    echo -e "Usage : $0  \n\t --reads1 <reads1.fastq[.gz]> \n\t --reads2 <reads2.fastq[.gz]> \n\t -O <output_dir> \n\t [-p <threads>] \n\t [-k <k-mer size>] \n\t [-d <extended degree distance>] \n\t [-h <hamming distance>] \n\t [-t <threshold>] \n\t [--sample <sample size | sample frac>] \n\t [--help] \n"
+
+    echo "Mandatory arguments : "
+    echo -e "\t --reads1: path to the first reads file (fastq or fastq.gz)"
+    echo -e "\t --reads2: path to the second pair-ended reads file (fastq or fastq.gz)"
+    echo -e "\t -O: path to the output directory\n"
+
+    echo "Optional arguments : "
+    echo -e "\t -p: number of threads to use (default: 8)"
+    echo -e "\t -k: k-mer size to use for the DGB construction (default: 41)"
+    echo -e "\t -d: extended degree distance to use for the weighting of the nodes (default: 10)"
+    echo -e "\t -h: hamming distance to use for the weighting of the nodes (default: 2)"
+    echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'sensitive'; options : 'sensitive' | 'precise' | n where n is a integer greater than 1)\n"
+
+    echo "Miscellaneous arguments : "
+    echo -e "\t --sample : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))"
+    echo -e "\t --help: display this help message and exit \n"
     exit 1
 fi
 
@@ -119,11 +142,31 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
-  echo "Build time (in seconds): $elapsed \n"
+  echo -e "Build time (in seconds): $elapsed \n"
 fi
 
-
   source ${WORK_DIR}/venv/bin/activate
+
+#Sample the reads if the sample size is specified, and write the sampled reads in ${READS_1}.sampled and ${READS_2}.sampled
+if [[ -n "${S}" ]]; then
+
+    seqtk sample -s 42 ${READS_1} ${S} | gzip -c > ${READS_1}.sampled.gz
+    seqtk sample -s 42 ${READS_2} ${S} | gzip -c > ${READS_2}.sampled.gz
+
+    # Update READS_1 and READS_2 to point to the sampled files
+    READS_1="${READS_1}.sampled.gz"
+    READS_2="${READS_2}.sampled.gz"
+
+    #Check if the sampled files are empty, if yes, exit
+    if [[ ! -s "${READS_1}" || ! -s "${READS_2}" ]]; then
+        echo "Error: Sampled files are empty. Please check the sample size and the input files."
+        echo "For large sample sizes, use fractional sampling (e.g., --sample 0.1 for 10% of the reads) instead of a fixed number of reads."
+        exit 1
+    fi
+
+fi
+
+start=`date +%s`
 
 if [[ -z "${SKIP_FASTP}" ]]; then
   ##FastP of the reads to remove the poly(A) tails
@@ -154,7 +197,7 @@ if [[ -z "${SKIP_HC}" ]]; then
     end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
-    echo "FastP time and HC (in seconds): $elapsed \n"
+    echo -e "FastP time and HC (in seconds): $elapsed \n"
 
     ##Compute the DGB with bcalm
     echo "DGB with bcalm ..."
@@ -178,7 +221,7 @@ awk '/^>/ {ab = substr($4, 6); print ab}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unit
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
-  echo "DGB time (in seconds): $elapsed \n"
+  echo -e "DGB time (in seconds): $elapsed \n"
 
   ##Filter the low abundance percent unitigs
   echo "Filtering the low abundance percent unitigs ..."
@@ -192,7 +235,7 @@ awk '/^>/ {ab = substr($4, 6); print ab}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unit
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
-  echo "Filtering time (in seconds): $elapsed \n"
+  echo -e "Filtering time (in seconds): $elapsed \n"
 fi
 
 if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
@@ -211,22 +254,24 @@ if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
-  echo "Weighting time (in seconds): $elapsed \n"
+  echo -e "Weighting time (in seconds): $elapsed \n"
 fi
 
 if [[ -z "${SKIP_THRESHOLD}" ]]; then
   ##Compute the threshold
   echo "Threshold of the nodes..."
-      if [[ -z "${T}" ]]; then
-        T=$(python3 ${BIN_DIR}/plot.py ${DATA_DIR}/graph/outputNodes.txt top1)
-      fi
-      echo "T=${T}"
-
+  if [[ -z "${T}" || "${T}" == "sensitive" ]]; then
+    # Default case or explicit precise
+    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/outputNodes.txt" top1)
+  elif [[ "${T}" == "precise" ]]; then
+    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/outputNodes.txt" top0001)
+  fi
+ echo "T=${T}"
 
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
-  echo "Threshold time (in seconds): $elapsed \n"
+  echo -e "Threshold time (in seconds): $elapsed \n"
 fi
 
 if [[ -z "${SKIP_AGGLO}" ]]; then
@@ -250,7 +295,7 @@ shopt -u nullglob
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
-  echo "Agglomeration time (in seconds): $elapsed \n"
+  echo -e "Agglomeration time (in seconds): $elapsed \n"
 
 fi
 
@@ -278,7 +323,7 @@ if [[ -z "${SKIP_CONSENSUS}" ]]; then
       end=`date +%s`
       elapsed=`expr $end - $begin`
       begin=`date +%s`
-      echo "Representative sequences time (in seconds): $elapsed \n"
+      echo -e "Representative sequences time (in seconds): $elapsed \n"
 fi
 
 if [[ -z "${SKIP_INDUCED}" ]]; then
@@ -298,18 +343,20 @@ if [[ -z "${SKIP_INDUCED}" ]]; then
     end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
-    echo "Analysis time (in seconds): $elapsed \n"
+    echo -e "Analysis time (in seconds): $elapsed \n"
 fi
 
 
 
 if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
-  echo "De novo classification of the extended_t_cores... \n"
+  echo -e "De novo classification of the extended_t_cores... \n"
     python3 ${BIN_DIR}/analysis_comp_de_novo.py \
         ${BASE_DIR}/comp \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \
         ${RESULTS_DIR}/seq_consensium.txt \
-        ${RESULTS_DIR}/analysis_comp
+        ${RESULTS_DIR}/analysis_comp \
+        ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt
+
 
 
     printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/microsatellite_cores_list.txt
@@ -327,7 +374,7 @@ if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
       end=`date +%s`
       elapsed=`expr $end - $begin`
       begin=`date +%s`
-      echo "De novo classification time (in seconds): $elapsed \n"
+      echo -e "De novo classification time (in seconds): $elapsed \n"
 fi
 
 total_end=`date +%s`

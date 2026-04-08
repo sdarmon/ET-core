@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
                 vu_total[i] = 1;
             }
         }
-        if (compt > 1){
+        if (compt >= 1){
             save_comp(G, compo, argv[7], m); //On enregistre la composante sur l'ordinateur
             m++;
         }

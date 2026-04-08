@@ -530,7 +530,7 @@ size_ex_deg = np.array(size_ex_deg)
 size_ex_deg = (size_ex_deg - size_ex_deg.min()) / (size_ex_deg.max() - size_ex_deg.min()) * 200 + 40
 
 # Choisir la normalisation : LogNorm() si large plage, sinon Normalize()
-norm = LogNorm(vmin=c.min(), vmax=c.max()) if (c > 0).all() and (c.max() / c.min() > 100) else Normalize(vmin=c.min(), vmax=c.max())
+norm = LogNorm(vmin=c.min(), vmax=c.max()) if (c > 0).all() and (c.max() / c.min() > 10) else Normalize(vmin=c.min(), vmax=c.max())
 fig, ax = plt.subplots(figsize=(6, 6))
 # forcer les axes entre 0 et 1
 ax.set_xlim(0.0, 1.0)
@@ -552,5 +552,5 @@ ax.legend(loc='upper right')
 # colorbar comme bloc-légende
 cbar = plt.colorbar(sc, ax=ax)
 cbar.set_label('Max extended degree')
-plt.savefig(Arg[5]+"all_nodes_of_comp_by_extended_degree.png", dpi=300)
+plt.savefig(Arg[5]+"all_nodes_of_comp_by_extended_degree.svg", bbox_inches='tight')
 plt.close()
