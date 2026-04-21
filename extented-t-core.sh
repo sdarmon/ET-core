@@ -79,7 +79,7 @@ if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} ]]; then
     echo -e "\t -k: k-mer size to use for the DGB construction (default: 41)"
     echo -e "\t -d: extended degree distance to use for the weighting of the nodes (default: 10)"
     echo -e "\t -h: hamming distance to use for the weighting of the nodes (default: 2)"
-    echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'sensitive'; options : 'sensitive' | 'precise' | n where n is a integer greater than 1)\n"
+    echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'sensitive'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)\n"
 
     echo "Miscellaneous arguments : "
     echo -e "\t --sample : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))"
@@ -366,6 +366,10 @@ if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
     printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchAT_cores_list.txt
     sort -k3,3nr ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp >> ${RESULTS_DIR}/stretchAT_cores_list.txt
     rm ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp
+
+    printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchCG_cores_list.txt
+    sort -k3,3nr ${RESULTS_DIR}/analysis_comp_stretchCG.txt.temp >> ${RESULTS_DIR}/stretchCG_cores_list.txt
+    rm ${RESULTS_DIR}/analysis_comp_stretchCG.txt.temp
 
     printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/other_cores_list.txt
     sort -k3,3nr ${RESULTS_DIR}/analysis_comp_others.txt.temp >> ${RESULTS_DIR}/other_cores_list.txt

@@ -54,6 +54,8 @@ Arg = sys.argv[:]
 
 if len(Arg) not in [8]:
     print("Use : " + Arg[0] + " analysis_comp_potential_TE.txt TE_coverage_count_ab_filtered.txt aligned_Dfam_consensus.txt comp_annotating_prefix output_roc_curve.png unitigs.nodes rate")
+    print("Arg used : ")
+    print(Arg)
     exit()
 
 
@@ -208,7 +210,7 @@ with open(Arg[1]+".sorted", 'r') as f:
         abundance = float(L[2])
         extended_degree = int(L[0])
         predicted_TE_list_ex.append((TE, abundance,extended_degree))
-
+print(len(predicted_TE_list_ex))
 #Now compute a dynamic ROC curve points, keeping track of TP and FP in function of extended degree threshold (from high to low)
 TP = 0
 TP_te = 0
@@ -245,7 +247,7 @@ for index in range(len(predicted_TE_list_ex)):
     TP_te_list.append(TP_te)
     FP_list.append(FP)
     FN_list.append(FN)
-
+print("TP: ", TP, "FP: ", FP)
 #Now compute the dynamic precision-recall curve points
 precision_list = []
 recall_list = []
@@ -332,7 +334,7 @@ with (open(Arg[6], 'r') as f):
         index = int(L[0])
         ex_deg = int(L[3])
         TE = L[5]
-        if index not in nodes_seen and ex_deg < min_deg:
+        if index not in nodes_seen and ex_deg < min_deg and ex_deg > 0:
             if ex_deg not in dic_additional_nodes:
                 dic_additional_nodes[ex_deg] = []
             dic_additional_nodes[ex_deg].append(index)
@@ -509,7 +511,7 @@ for i in range(len(TP_list)):
 # ex_deg_threshold_list doit exister et avoir la même longueur que recall_list/precision_list
 #complete ex_deg_threshold_list with the additional nodes extended degree (which is the key of dic_additional_nodes) and complete the size_ex_deg list
 actual_ex_deg = [ex_deg_2_actual_ex_deg[ex_deg] for ex_deg in ex_deg_threshold_list]
-for i in range(min_deg-1,-1,-1):
+for i in range(min_deg-1,0,-1):
     actual_ex_deg+=[i]*ex_deg_unitig_count[i]
 c = np.array(actual_ex_deg)
 #Complete size_ex_deg with 1
@@ -552,5 +554,5 @@ ax.legend(loc='upper right')
 # colorbar comme bloc-légende
 cbar = plt.colorbar(sc, ax=ax)
 cbar.set_label('Max extended degree')
-plt.savefig(Arg[5]+"all_nodes_of_comp_by_extended_degree.svg", bbox_inches='tight')
+plt.savefig(Arg[5]+"all_nodes_of_comp_by_extended_degree.png", bbox_inches='tight')
 plt.close()

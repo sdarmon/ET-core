@@ -43,11 +43,13 @@ if [[ -z "$DFAM_FA"  || -z "$OUTDIR" ]]; then
     echo "Default values: -p 8 -k 41 "
     exit 1
 fi
-
+filename="${DFAM_FA##*/}"
+SPE="${filename%.*}"
 echo "Parameters used : "
 echo "Threads : $P"
 echo "K-mer size : $K"
 echo "TE consensus fasta file : $DFAM_FA"
+echo "Short name : $SPE"
 echo "Output directory : $OUTDIR"
 
 #If OUTDIR ends with a /, remove it
@@ -443,7 +445,7 @@ if [[ -z "${SKIP_TE_VS_COMPS}" ]]; then
       | sed 's/; /\n/g' \
       | sort -u  >> ${RESULTS_DIR}/temp.txt
 
-      awk '$6!="*" {print $6}' FS="\t" ${BASE_DIR}/cores/comp${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> ${RESULTS_DIR}/TE_from_cores.txt
+      awk '$6!="*" {print $6}' FS="\t" ${BASE_DIR}/comp${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> ${RESULTS_DIR}/TE_from_cores.txt
     done
     sort -u ${RESULTS_DIR}/TE_from_cores.txt > ${RESULTS_DIR}/TE_from_cores_sorted.txt
     sort -u ${RESULTS_DIR}/temp.txt > ${RESULTS_DIR}/TE_in_comps.txt
@@ -551,8 +553,9 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
     #Now idem with the 100 first comps
     echo "Analysis of first 100 comp consensus prediction..."
     awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_potential_TE_100_unsorted.txt
-    awk 'NR>1 && $1 < 100 {print $1,$2,$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
+    awk 'NR>1 && $1 < 100 {print $1"\t"$2"\t"$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
     awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
+  awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/stretchCG_cores_list.txt >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
 
     echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/other_cores_list_100.txt
     sort -k3,3gr ${BASE_DIR}/core_potential_TE_100_unsorted.txt | uniq >> ${RESULTS_DIR}/other_cores_list_100.txt
@@ -598,8 +601,10 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
       #Now idem with the all comps
         echo "Analysis of all comp consensus prediction..."
         awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_all_unsorted.txt
-        awk 'NR>1  {print $1,$2,$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_all_unsorted.txt
+        awk 'NR>1  {print $1"\t"$2"\t"$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_all_unsorted.txt
         awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_all_unsorted.txt
+        awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/stretchCG_cores_list.txt >> ${BASE_DIR}/core_all_unsorted.txt
+
 
         echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/all_cores_list.txt
         sort -k3,3gr ${BASE_DIR}/core_all_unsorted.txt | uniq >> ${RESULTS_DIR}/all_cores_list.txt

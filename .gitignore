@@ -1,4 +1,27 @@
-#Cargo build files:
-scr/bin/at_compessor/target*
-scr/bin/gene_finder_de_novo/target*
-scr/bin/filtering_low_ab_percent/target*
+#Cargo build files:i
+bin/at_compessor/target*
+bin/gene_finder_de_novo/target*
+bin/filtering_low_ab_percent/target*
+bin/at_compressor/target*
+
+#Temp bowtie2 files
+*.bt2
+
+#TeTools workfiles
+alignment*
+
+#FastP file
+fastp.json
+
+#RepeatMasker
+bin/RepeatMasker*
+
+#FamDB
+bin/famdb.py
+
+#Python3 curve
+bin/curve.py
+
+.idea/
+trash*
+bin/TEcount.ini
