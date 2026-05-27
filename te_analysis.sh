@@ -677,3 +677,16 @@ fi
 end_final=`date +%s`
 elapsed_final=`expr $end_final - $start`
 echo -e "Total TE analysis pipeline time (in seconds): $elapsed_final \n"
+
+exit 0
+
+:>results/TE_in_comps.txt
+MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
+    for file in results/cores/comp*.txt; do
+      MAXI=$(( $MAXI + 1 ))
+    done
+for ((i=0; i<$MAXI; i++))
+do
+  echo "Core $i" >> results/TE_in_comps.txt
+   awk '$6!="*" {print $6}' FS="\t" results/cores/comp${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> results/TE_in_comps.txt
+done

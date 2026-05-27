@@ -1,4 +1,4 @@
-# Extented-t-core
+# Extended-t-core
 
 This repository contains the code to *de novo* compute the **extended-t-cores** of a 
 compacted de Bruijn graph built from short reads RNA-seq.
@@ -19,9 +19,9 @@ A second script is available to compare the extended-t-cores to a TE consensus l
 such as the one from the **DFAM** database (see last section for TEs extraction).
 
 
-## *De novo* extented-t-cores computing
+## *De novo* Extended-t-cores computing
 
-Currently, one can either directly use the binary version or recompile all the code and dependancies for optimal execution (recommanded).
+<!-- Currently, one can either directly use the binary version or recompile all the code and dependancies for optimal execution (recommanded).-->
 
 ### Dependencies and versions used (for optimal execution)
 
@@ -30,7 +30,7 @@ Currently, one can either directly use the binary version or recompile all the c
 - **gcc** version 12.2.0 (for C++ compilation)
 - **FastP** version 0.23.4
 - **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
-<!-- - **seqtk** version 1.4-r122 -->
+- **Optional : seqtk** version 1.4-r122 (for sampling the reads using the `--sample` option)
 
 
 ### Code example (with dependencies built)
@@ -43,23 +43,29 @@ bash extended-t-core.sh \
     -O output_dir
 ```
 Where `--reads1` and `--reads2` are the paths to the paired-end reads, possibly `.gz`, and `-O` is the output directory.
-Some additional parameters can be specified, such as the number of threads to use (`-p`) and the k-mer size for the de Bruijn graph construction (`-k`), or the distance of the extended degree (`-d`).
+
+Some additional parameters can be specified:
+- `-p`: number of threads to use (default: 8)
+- `-k`: k-mer size to use for the DGB construction (default: 41)
+- `-d`: extended degree distance to use for the weighting of the nodes (default: 10)
+- `-h`: hamming distance to use for the weighting of the nodes (default: 2)
+- `-t`: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)
+- `--sample` : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
 
 
 ### Quick recap of the steps
 
 1. Build the binaries (**Rust** and **C++** codes) and create a **Python3** venvironment.
 2. Run **FastP** to trim the reads, detect and remove adapters, and filter out low-quality reads. Logs are saved in the `output_dir/fastp_log.html` file.
-3. Do an homopolymer compression of the reads to limit A/T stretches.
+3. Do a homopolymer compression of the reads to limit A/T stretches.
 4. Build the de Bruijn graph using **BCALM2**.
 5. Extract the unitigs from the de Bruijn graph and filter the sequences errors edges.
 6. Compute the extended degree of the unitigs.
-7. Compute the threshold for the extended degree corresponding to the top 1% of the unitigs.
+7. Compute the threshold for the extended degree.
 8. Compute the extended-t-cores of the compacted de Bruijn graph.
 9. Compute a representative sequence for each extended-t-core.
 10. Classify the extended-t-cores depending on their repeat content (microsatellite, A/T stretches, others).
-11. Compute the induced subgraph of the pairwise connections between the extended-t-cores.
-12. (TO BE DONE) Assembly of potential full-length Transposable Elements using the extended-t-cores as seeds and the pairwise connections between them.
+11. Compute the induced subgraph of the pairwise connections between the extended-t-cores, including the DNA paths between them.
 
 ### Output and files structure
 
@@ -69,26 +75,23 @@ The output directory will contain the following files and directories:
     ├── fastp_log.html
     │
     ├── data/
-    │   ├── R1/2.fastp
-    │   ├── hc1/2.fastq
+    │   ├── R1/2.fastp.gz (reads after fastp)
+    │   ├── hc1/2.fastq.gz (reads after homopolymer compression)
     │   └── graph/
-    │       ├── graph.nodes
-    │       ├── graph.edges
-    │       ├── graph.abundance
-    │       └── unitigs_extended_degree.nodes
+    │       ├── graph.nodes (id_unitig `\t` seq_unitig)
+    │       ├── graph.edges (id_unitig1 `\t` id_unitig2 `\t` way)
+    │       ├── graph.abundance (abundance_unitig)
+    │       └── outputNodes.txt (id_unitig `\t` seq_unitig `\t` extended_degree_unitig)
     │
     ├── results/
-    │   ├── stretchAT_cores_list.txt
-    │   ├── microsatellite_cores_list.txt
-    │   ├── other_cores_list.txt
+    │   ├── extended_t_cores_summary.tsv 
     │   ├── cores/
-    │   │   └── extended_t_cores_${i}.nodes
+    │   │   └── comp${i}.nodes (unitigs of the ith extended-t-core)
     │   └── induced_cores_subgraph/
-    │       ├── transcript_summary_comps.txt
-    │       └── connecting_unitigs.txt
+    │       └── connecting_paths.txt (id_core1 `\t` id_core2 `\t` path_between_cores)
     │
     WORK_DIR/
-    ├── script.sh
+    ├── extended-t-core.sh
     ├── requirements.txt
     ├── venv/
     └── bin/
@@ -96,7 +99,7 @@ The output directory will contain the following files and directories:
 ### Binary version (without dependencies -> soon be replaced with a docker image)
 
 ```
-bash extented-t-core_binaries.sh \
+bash Extended-t-core_binaries.sh \
     --reads1 reads_1.fastq[.gz] \
     --reads2 reads_2.fastq[.gz] \
     -O output_dir
@@ -146,8 +149,8 @@ The output directory will have the following additional files and directories:
 
     OUTDIR/
     ├── results/
-    │   ├── TE_coverage_count_ab_filtered.txt       <-- Ground truth TEs
-    │   ├── output_roc_curves.png                   <-- KEY VISUAL
+    │   ├── TE_coverage_count_ab_filtered.txt       
+    │   ├── output_roc_curves.png                   
     │   │
     │   ├── alignment/
     │   │   ├── READS.sam 
@@ -155,7 +158,7 @@ The output directory will have the following additional files and directories:
     │   │   └── bowtie2_output_reads.txt
     │   │
     │   └── cores/
-    │       ├── alignment_all_unitigs.sam/bam
+    │       ├── alignment_all_unitigs.bam
     │       ├── all_unitigs_annotated.nodes
     │       ├── extended_t_cores_${i}_annotated.nodes
     │       └── alignment_${i}/

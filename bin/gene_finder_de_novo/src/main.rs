@@ -383,6 +383,52 @@ if args.len() != 8 {
     //close the file
     drop(file);
 
+    //Output the paths linking pairwise comp, if there is a connected unitig with F and R
+    file = std::fs::File::create(format!("{}/connecting_paths.txt", output_dir)).unwrap();
+    for id in &connecting_unitigs {
+        let original_seq = nodes.get(&id).unwrap().0.clone();
+        //Write the id in the file
+        let comp_ids = visited_loc.get(id).unwrap();
+        //Define the F vector
+        let mut F_vec = Vec::new();
+        let mut R_vec = Vec::new();
+        for (comp_id, way, seq) in comp_ids {
+            if *way {
+                F_vec.push((comp_id, seq));
+            } else {
+                R_vec.push((comp_id, seq));
+            }
+        }
+
+        //loop over F and R vect to merge the seq
+        for (comp1,seq1) in &F_vec {
+            for (comp2,seq2) in &R_vec {
+                if comp1==comp2 {
+                    continue;
+                }
+
+                //Sanity check if the F seq end with the original seq AND if the R seq start with
+                // the original seq
+                if !seq1.ends_with(&original_seq) {
+                    eprintln!("Error: The F seq {} does not end with the original seq {}", seq1, original_seq);
+                    continue;
+                }
+                if !seq2.starts_with(&original_seq) {
+                    eprintln!("Error: The R seq {} does not start with the original seq {}", seq2, original_seq);
+                    continue;
+                }
+                //Merge the two seq by concatenating the F seq and the R seq without the original seq
+                let seq_merged = format!("{}{}", seq1, &seq2[original_seq.len()..]);
+                if comp1 > comp2 {
+                    writeln!(file, "{}\t{}\t{}", comp2, comp1, seq_merged).unwrap();
+                } else {
+                    writeln!(file, "{}\t{}\t{}", comp1, comp2, seq_merged).unwrap();
+                }
+            }
+        }
+    }
+
+    drop(file);
     //transcript_summary_comps.txt
     file = std::fs::File::create(format!("{}/transcript_summary_comps.txt", output_dir)).unwrap();
     //Write the number of expressed transcripts for each component

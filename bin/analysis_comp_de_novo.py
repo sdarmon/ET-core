@@ -223,14 +223,14 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
                             f4.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
                             type_rep="C/G stretch"
                             #score-=1
-                        if r >= 0.2:
+                        if r >= 0.4:
                             f1.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\t{seq_m}\t{r}\n")
                             texte="Microsat "+str(seq_m)+" ("+str(round(r*100))+"%)"
                             if type_rep=="":
                                 type_rep= texte
                             else:
                                 type_rep=type_rep+" and "+texte
-                        if total_poly / len(seqs) < 0.75 and  total_CG / len(seqs) < 0.75 and r < 0.2 :
+                        if total_poly / len(seqs) < 0.75 and  total_CG / len(seqs) < 0.75 and r < 0.4 :
                             f3.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
                             type_rep = "Potential TE"
                             score+=1

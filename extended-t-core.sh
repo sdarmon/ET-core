@@ -79,7 +79,7 @@ if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} ]]; then
     echo -e "\t -k: k-mer size to use for the DGB construction (default: 41)"
     echo -e "\t -d: extended degree distance to use for the weighting of the nodes (default: 10)"
     echo -e "\t -h: hamming distance to use for the weighting of the nodes (default: 2)"
-    echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'sensitive'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)\n"
+    echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)\n"
 
     echo "Miscellaneous arguments : "
     echo -e "\t --sample : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))"
@@ -260,11 +260,11 @@ fi
 if [[ -z "${SKIP_THRESHOLD}" ]]; then
   ##Compute the threshold
   echo "Threshold of the nodes..."
-  if [[ -z "${T}" || "${T}" == "sensitive" ]]; then
-    # Default case or explicit precise
-    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/outputNodes.txt" top1)
-  elif [[ "${T}" == "precise" ]]; then
+  if [[ -z "${T}" || "${T}" == "precise" ]]; then
+    # Default case or explicit sensitive
     T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/outputNodes.txt" top0001)
+  elif [[ "${T}" == "sensitive" ]]; then
+    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/outputNodes.txt" top1)
   fi
  echo "T=${T}"
 
@@ -339,6 +339,8 @@ if [[ -z "${SKIP_INDUCED}" ]]; then
 
      awk '{print $3}' FS='\t' ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt | sed 's/,/\t/g' > ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt
     python3 ${BIN_DIR}/connecting_to_edges.py ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt  > ${RESULTS_DIR}/induced_cores_subgraph/connected.edges
+
+
 
     end=`date +%s`
     elapsed=`expr $end - $begin`
