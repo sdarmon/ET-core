@@ -11,10 +11,13 @@ D_NT="10"
 T=""
 H="2"
 S=""
+A="2"
 READS_1=""
 READS_2=""
 OUTDIR=""
-
+MAX_MEM="14000"
+NO_FASTP=""
+VALIDE=""
 # Parse options
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -38,6 +41,10 @@ while [[ $# -gt 0 ]]; do
             H="$2"
             shift 2
             ;;
+        -a)
+            A="$2"
+            shift 2
+            ;;
         --reads1)
             READS_1="$2"
             shift 2
@@ -50,6 +57,15 @@ while [[ $# -gt 0 ]]; do
             S="$2"
             shift 2
             ;;
+        --max-memory)
+            MAX_MEM="$2"
+            shift 2
+            ;;
+        --no-fastp)
+            NO_FASTP="True"
+            SKIP_FASTP="True"
+            shift 1
+            ;;
         --help)
             HELP="True"
             shift 1
@@ -60,28 +76,33 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            exit 1
+            VALIDE="F"
+            shift 1
             ;;
     esac
 done
 
 #If READS_1, READS_2 or OUTDIR are not set, exit
-if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} ]]; then
-    echo -e "Usage : $0  \n\t --reads1 <reads1.fastq[.gz]> \n\t --reads2 <reads2.fastq[.gz]> \n\t -O <output_dir> \n\t [-p <threads>] \n\t [-k <k-mer size>] \n\t [-d <extended degree distance>] \n\t [-h <hamming distance>] \n\t [-t <threshold>] \n\t [--sample <sample size | sample frac>] \n\t [--help] \n"
+if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} || -n ${VALIDE} ]]; then
+    echo -e "Usage : $0  \n\t --reads1 <reads1.fastq[.gz]> \n\t --reads2 <reads2.fastq[.gz]> \n\t -O <output_dir> \n\t [-p <threads>] \n\t [-k <k-mer size>] \n\t [-d <extended degree distance>] \n\t [-h <hamming distance>] \n\t [-t <threshold>] \n\t [-a <abundance min>] \n\t [--max-memory <MB>]  \n\t [--no-fastp] \n\t [--sample <sample size | sample frac>]  \n\t [--help] \n"
 
     echo "Mandatory arguments : "
     echo -e "\t --reads1: path to the first reads file (fastq or fastq.gz)"
     echo -e "\t --reads2: path to the second pair-ended reads file (fastq or fastq.gz)"
-    echo -e "\t -O: path to the output directory\n"
+    echo -e "\t -O: path to the output directory"
+    echo -e "-> fasta and fasta.gz files are usable only if the option '--no-fastp' is toggled\n"
 
     echo "Optional arguments : "
     echo -e "\t -p: number of threads to use (default: 8)"
     echo -e "\t -k: k-mer size to use for the DGB construction (default: 41)"
     echo -e "\t -d: extended degree distance to use for the weighting of the nodes (default: 10)"
     echo -e "\t -h: hamming distance to use for the weighting of the nodes (default: 2)"
-    echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)\n"
+    echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)"
+    echo -e "\t -a: Abundance minimal for keeping the k-mers (default: 2)\n"
 
     echo "Miscellaneous arguments : "
+    echo -e "\t --max-memory: max memory to use (in MBytes, default: 14000)"
+    echo -e "\t --no-fastp : do not run fastp on the reads (not recommended if the reads are not curated)"
     echo -e "\t --sample : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))"
     echo -e "\t --help: display this help message and exit \n"
     exit 1
@@ -131,7 +152,7 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
   cargo build --release --manifest-path ${BIN_DIR}/at_compressor/Cargo.toml
   cp ${BIN_DIR}/at_compressor/target/release/at_compressor ${BIN_DIR}/homopolymorphic_compression.exe
 
-  g++ -O3 -g ${BIN_DIR}/graph.cpp ${BIN_DIR}/ponderation.cpp -o ${BIN_DIR}/graph.exe
+  g++ -O3 -g -fopenmp ${BIN_DIR}/graph.cpp ${BIN_DIR}/ponderation.cpp -o ${BIN_DIR}/graph.exe
   g++ -O3 -g ${BIN_DIR}/graph.cpp ${BIN_DIR}/agglo.cpp -o ${BIN_DIR}/agglo.exe
 
   python3 -m venv venv
@@ -150,12 +171,14 @@ fi
 #Sample the reads if the sample size is specified, and write the sampled reads in ${READS_1}.sampled and ${READS_2}.sampled
 if [[ -n "${S}" ]]; then
 
-    seqtk sample -s 42 ${READS_1} ${S} | gzip -c > ${READS_1}.sampled.gz
-    seqtk sample -s 42 ${READS_2} ${S} | gzip -c > ${READS_2}.sampled.gz
-
+    if [[ -z "${SKIP_SAMPLING}" ]]; then
+      echo "Sampling the reads"
+      seqtk sample -s 42 ${READS_1} ${S} | gzip -c > ${READS_1}.${S}.sampled.gz
+      seqtk sample -s 42 ${READS_2} ${S} | gzip -c > ${READS_2}.${S}.sampled.gz
+    fi 
     # Update READS_1 and READS_2 to point to the sampled files
-    READS_1="${READS_1}.sampled.gz"
-    READS_2="${READS_2}.sampled.gz"
+    READS_1="${READS_1}.${S}.sampled.gz"
+    READS_2="${READS_2}.${S}.sampled.gz"
 
     #Check if the sampled files are empty, if yes, exit
     if [[ ! -s "${READS_1}" || ! -s "${READS_2}" ]]; then
@@ -163,11 +186,27 @@ if [[ -n "${S}" ]]; then
         echo "For large sample sizes, use fractional sampling (e.g., --sample 0.1 for 10% of the reads) instead of a fixed number of reads."
         exit 1
     fi
-
 fi
 
+#Start the benchmark time now
 start=`date +%s`
+begin=`date +%s`
+#Skipping fastp using user's files
+if [[ -n "${NO_FASTP}" ]]; then
+  if [[ "${READS_1}" == *.gz ]]; then
+    cp ${READS_1} ${DATA_DIR}/R1.fastp.gz
+  else
+    gzip -c ${READS_1} > ${DATA_DIR}/R1.fastp.gz
+  fi
 
+  if [[ "${READS_2}" == *.gz ]]; then
+    cp ${READS_2} ${DATA_DIR}/R2.fastp.gz
+  else
+    gzip -c ${READS_2} > ${DATA_DIR}/R2.fastp.gz
+  fi
+fi
+
+#Skipping fastp using fastP output (for debugging)
 if [[ -z "${SKIP_FASTP}" ]]; then
   ##FastP of the reads to remove the poly(A) tails
   echo "FastP of the reads ..."
@@ -193,23 +232,37 @@ if [[ -z "${SKIP_HC}" ]]; then
   echo "HC of the reads ..."
     ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R1.fastp.gz ${DATA_DIR}/hc_1.fa.gz 5
     ${BIN_DIR}/homopolymorphic_compression.exe  ${DATA_DIR}/R2.fastp.gz ${DATA_DIR}/hc_2.fa.gz 5
-
     end=`date +%s`
     elapsed=`expr $end - $begin`
     begin=`date +%s`
-    echo -e "FastP time and HC (in seconds): $elapsed \n"
-
+    echo -e " HC (in seconds): $elapsed \n"
+fi
+if [[ -z "${SKIP_BCALM}" ]]; then
     ##Compute the DGB with bcalm
     echo "DGB with bcalm ..."
     #ls -1 ${DATA_DIR}/hc_1.fa ${DATA_DIR}/hc_2.fa > ${DATA_DIR}/list_reads
     echo "hc_1.fa.gz" > ${DATA_DIR}/list_reads
     echo "hc_2.fa.gz" >> ${DATA_DIR}/list_reads
+
+  M="10"
+  #If ${K} <= 10, we change M to half the value of K
+  if (( $((${K} < 11)) )); then
+    M=$((${K}/2))
+  fi
+
   bcalm \
       -in ${DATA_DIR}/list_reads \
       -kmer-size ${K} \
-      -abundance-min 2 \
       -nb-cores ${P} \
+      -abundance-min ${A} \
+      -minimizer-size ${M} \
+      -max-memory ${MAX_MEM} \
       -out ${DATA_DIR}/graph/hc_1_hc_2_k${K}
+
+  end=`date +%s`
+  elapsed=`expr $end - $begin`
+  begin=`date +%s`
+  echo -e "Bcalm time (in seconds): $elapsed \n"
 fi
 
 
@@ -247,7 +300,7 @@ if [[ -z "${SKIP_GEN_GRAPH}" ]]; then
       ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
       ${D_NT} \
       -k ${K}  \
-      -o ${DATA_DIR}/graph/outputNodes.txt  \
+      -o ${DATA_DIR}/graph/unitigs_extended_degree.nodes  \
       -h ${H}
 
 
@@ -262,9 +315,9 @@ if [[ -z "${SKIP_THRESHOLD}" ]]; then
   echo "Threshold of the nodes..."
   if [[ -z "${T}" || "${T}" == "precise" ]]; then
     # Default case or explicit sensitive
-    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/outputNodes.txt" top0001)
+    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/unitigs_extended_degree.nodes" top0001)
   elif [[ "${T}" == "sensitive" ]]; then
-    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/outputNodes.txt" top1)
+    T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/unitigs_extended_degree.nodes" top1)
   fi
  echo "T=${T}"
 
@@ -275,8 +328,8 @@ if [[ -z "${SKIP_THRESHOLD}" ]]; then
 fi
 
 if [[ -z "${SKIP_AGGLO}" ]]; then
-  ## Compute the connexe components
-  echo "Agglomeration of connexe components..."
+  ## Compute the connexe cores
+  echo "Agglomeration of connexe cores..."
   #If the BASE_DIR is not empty, remove the files in it
   shopt -s nullglob
    for file in ${BASE_DIR}/*; do
@@ -285,7 +338,7 @@ if [[ -z "${SKIP_AGGLO}" ]]; then
 shopt -u nullglob
 
   ${BIN_DIR}/agglo.exe \
-      ${DATA_DIR}/graph/outputNodes.txt \
+      ${DATA_DIR}/graph/unitigs_extended_degree.nodes \
       ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
       -c ${T} \
       -k ${K} \
@@ -300,20 +353,20 @@ shopt -u nullglob
 fi
 
 if [[ -z "${SKIP_CONSENSUS}" ]]; then
-  echo "Computing the representative sequences of the components..."
-    ##The number of components to compute
-    MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
+  echo "Computing the representative sequences of the cores..."
+    ##The number of cores to compute
+    MAXI=0 #$(ls ${BASE_DIR}/core*.txt | wc -l)
     shopt -s nullglob
-    for file in ${BASE_DIR}/comp*.txt; do
+    for file in ${BASE_DIR}/core*.txt; do
       MAXI=$(( $MAXI + 1 ))
     done
     shopt -u nullglob
-    echo "Number of comps : ${MAXI}"
+    echo "Number of cores : ${MAXI}"
 
 
-    ##Compute the analysis over every component
-    python3 ${BIN_DIR}/seq_consensium_of_comps.py \
-        ${BASE_DIR}/comp \
+    ##Compute the analysis over every core
+    python3 ${BIN_DIR}/seq_consensium_of_cores.py \
+        ${BASE_DIR}/core \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \
         ${RESULTS_DIR}/seq_consensium.txt \
@@ -329,8 +382,8 @@ fi
 if [[ -z "${SKIP_INDUCED}" ]]; then
      echo "Analysis of the extended_t_cores induced subgraph..."
     ${BIN_DIR}/gene_finder_de_novo.exe \
-          ${BASE_DIR}/comp \
-          ${DATA_DIR}/graph/outputNodes.txt \
+          ${BASE_DIR}/core \
+          ${DATA_DIR}/graph/unitigs_extended_degree.nodes \
           ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \
           ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \
           ${RESULTS_DIR}/induced_cores_subgraph \
@@ -352,30 +405,30 @@ fi
 
 if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
   echo -e "De novo classification of the extended_t_cores... \n"
-    python3 ${BIN_DIR}/analysis_comp_de_novo.py \
-        ${BASE_DIR}/comp \
+    python3 ${BIN_DIR}/analysis_core_de_novo.py \
+        ${BASE_DIR}/core \
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \
         ${RESULTS_DIR}/seq_consensium.txt \
-        ${RESULTS_DIR}/analysis_comp \
+        ${RESULTS_DIR}/analysis_core \
         ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt
 
 
 
-    printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/microsatellite_cores_list.txt
-    sort -k3,3nr ${RESULTS_DIR}/analysis_comp_microsat.txt.temp >> ${RESULTS_DIR}/microsatellite_cores_list.txt
-    rm ${RESULTS_DIR}/analysis_comp_microsat.txt.temp
+    printf "Core_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/microsatellite_cores_list.txt
+    sort -k3,3nr ${RESULTS_DIR}/analysis_core_microsat.txt.temp >> ${RESULTS_DIR}/microsatellite_cores_list.txt
+    rm ${RESULTS_DIR}/analysis_core_microsat.txt.temp
 
-    printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchAT_cores_list.txt
-    sort -k3,3nr ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp >> ${RESULTS_DIR}/stretchAT_cores_list.txt
-    rm ${RESULTS_DIR}/analysis_comp_stretchAT.txt.temp
+    printf "Core_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchAT_cores_list.txt
+    sort -k3,3nr ${RESULTS_DIR}/analysis_core_stretchAT.txt.temp >> ${RESULTS_DIR}/stretchAT_cores_list.txt
+    rm ${RESULTS_DIR}/analysis_core_stretchAT.txt.temp
 
-    printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchCG_cores_list.txt
-    sort -k3,3nr ${RESULTS_DIR}/analysis_comp_stretchCG.txt.temp >> ${RESULTS_DIR}/stretchCG_cores_list.txt
-    rm ${RESULTS_DIR}/analysis_comp_stretchCG.txt.temp
+    printf "Core_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/stretchCG_cores_list.txt
+    sort -k3,3nr ${RESULTS_DIR}/analysis_core_stretchCG.txt.temp >> ${RESULTS_DIR}/stretchCG_cores_list.txt
+    rm ${RESULTS_DIR}/analysis_core_stretchCG.txt.temp
 
-    printf "Comp_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/other_cores_list.txt
-    sort -k3,3nr ${RESULTS_DIR}/analysis_comp_others.txt.temp >> ${RESULTS_DIR}/other_cores_list.txt
-    rm ${RESULTS_DIR}/analysis_comp_others.txt.temp
+    printf "Core_ID\tRepresentative\tMax abundance\n" >  ${RESULTS_DIR}/other_cores_list.txt
+    sort -k3,3nr ${RESULTS_DIR}/analysis_core_others.txt.temp >> ${RESULTS_DIR}/other_cores_list.txt
+    rm ${RESULTS_DIR}/analysis_core_others.txt.temp
 
       end=`date +%s`
       elapsed=`expr $end - $begin`

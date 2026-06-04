@@ -3,7 +3,7 @@ import sys
 Arg = sys.argv[:]
 
 if len(Arg) not in [6,7]:
-    print("Use : " + Arg[0] + " comp.txt graph.nodes graph.edges -o prefix_output [fast_cons]")
+    print("Use : " + Arg[0] + " core.txt graph.nodes graph.edges -o prefix_output [fast_cons]")
     exit()
 
 if len(Arg) == 7:
@@ -11,8 +11,8 @@ if len(Arg) == 7:
     d_max = 1000
 else:
     fast=False
-    d_max = 10
-comp = []
+    d_max = 20
+core = []
 max_ab = 0
 id_max_ad = 0
 comp_id = set()
@@ -21,7 +21,7 @@ with open(Arg[1],"r") as f:
         L = line[:-1].split('\t')
         if len(L) < 2 :
             continue
-        comp.append(L)
+        core.append(L)
         comp_id.add(int(L[0]))
         a = int(L[8])
         if a > max_ab:
@@ -91,7 +91,7 @@ while id_a_voir != []:
         if id2 == id_max_2:
             b2 = True
             right_path.append(id2)
-        if id2 in comp_id: #Depth first in comp
+        if id2 in comp_id: #Depth first in core
             id_a_voir= [(id2,d, b1,b2,n_way1,n_way2)] + id_a_voir
         elif (fast and (b1 or b2)):
             id_a_voir.append((id2,d-1,b1,b2,n_way1,n_way2))
@@ -121,6 +121,8 @@ for i in range(len(right_path)):
     else:
         a = right_path[i-1]
     b = right_path[i]
+    if b==a :
+        continue
     if edges_ways[(a,b)]=="FF":
         seq_path=seq_path+seq[b][40:]
         final_way='F'
@@ -143,6 +145,8 @@ for i in range(len(left_path)):
     else:
         a = left_path[i-1]
     b = left_path[i]
+    if b==a :
+        continue
     if edges_ways[(a,b)]=="FF":
         seq_path=seq_path+seq[b][40:]
     elif edges_ways[(a,b)]=="RR":

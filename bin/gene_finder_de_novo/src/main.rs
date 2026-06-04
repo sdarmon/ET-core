@@ -51,7 +51,7 @@ if args.len() != 8 {
         std::process::exit(1);
     //Input:
     //${WORK_DIR}/gene_finder_de_novo.exe \
-    //           ${BASE_DIR}/comp \
+    //           ${BASE_DIR}/core \
     //           ${RESULTS_DIR}/graph/outputNodes.txt \
     //           ${RESULTS_DIR}/graph/graph_hc_1_hc_2_k${K}_C0.05.edges \
     //           ${RESULTS_DIR}/graph/graph_hc_1_hc_2_k${K}.abundance \
@@ -200,7 +200,7 @@ if args.len() != 8 {
         visited_in_comp.push(std::collections::HashSet::new());
     }
 
-    //Dictionary of the comp where the unitig have been visited : visited_loc[id] = Vec<f64>
+    //Dictionary of the core where the unitig have been visited : visited_loc[id] = Vec<f64>
     let mut visited_loc = std::collections::HashMap::new();
 
     //Define the flux for each component
@@ -309,9 +309,9 @@ if args.len() != 8 {
             if !seen_id_in_comp {
                 //Add the node to the visited_in_comp set
                 visited_in_comp[i].insert(id);
-                visited_loc.entry(id).or_insert_with(Vec::new).push((i,way,seq.clone()));
+                //visited_loc.entry(id).or_insert_with(Vec::new).push((i,way,seq.clone()));
                 //Add the node to the connecting_unitigs set
-                connecting_unitigs.insert(id);
+                //connecting_unitigs.insert(id);
                 //flux[i] += old_ab;
             } else {
                 //Second case : it has been visited from the same component
@@ -319,9 +319,10 @@ if args.len() != 8 {
             }
         }
 
-        if !seen_id_in_comp && seen_id_other_way { //Id seen in the other way and from another component
+        if !seen_id_way && !seen_id_in_comp && seen_id_other_way { //Id seen in the other way and from another component
             //If the node has not been visited in the current component
             visited_loc.entry(id).or_insert_with(Vec::new).push((i,way,seq.clone()));
+            visited.insert((id,way));
             //Add the node to the connecting_unitigs set
             connecting_unitigs.insert(id);
             //flux[i] += old_ab;
@@ -383,7 +384,7 @@ if args.len() != 8 {
     //close the file
     drop(file);
 
-    //Output the paths linking pairwise comp, if there is a connected unitig with F and R
+    //Output the paths linking pairwise core, if there is a connected unitig with F and R
     file = std::fs::File::create(format!("{}/connecting_paths.txt", output_dir)).unwrap();
     for id in &connecting_unitigs {
         let original_seq = nodes.get(&id).unwrap().0.clone();
@@ -440,7 +441,7 @@ if args.len() != 8 {
                 max_ab = ab;
             }
         }
-        writeln!(file, "Component {}: {:.2} flux \t {} max ab \t {} leaves \t {} connected comp", i, flux[i], max_ab, leaves[i], comp_connections[i].len()).unwrap();
+        writeln!(file, "Component {}: {:.2} flux \t {} max ab \t {} leaves \t {} connected core", i, flux[i], max_ab, leaves[i], comp_connections[i].len()).unwrap();
     }
     //close the file
     drop(file);

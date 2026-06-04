@@ -22,6 +22,9 @@ bin/famdb.py
 #Python3 curve
 bin/curve.py
 
+#Toy example
+toy_example*
+
 .idea/
 trash*
 bin/TEcount.ini

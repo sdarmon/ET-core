@@ -97,7 +97,7 @@ void chemin_local(int i, vector<int> &endings, Graph &G, vector<vector<int>> &co
 //Fonction permettant de récupérer l'index du sommet de `G` ayant le poids le plus élevé et qui n'a pas été déjà vu dans
 //`vu_total` (i.e. `vu_total[index] == 0`)
 int indexMax(Graph &G, vector<int> &vu_total){
-    int index;
+    int index = -1;
     int val = -1;
     for (int i = 0; i<G.N; i++){
         if (vu_total[i] == 0 && G.Vertices[i].weight > val){
@@ -120,7 +120,7 @@ void initVec(vector<int> &vec, int n){
 //Fonction permettant d'enregistrer une composante du graphe `G` dans un fichier
 void save_comp(Graph &G, vector<int> &compo, string outputPrefix, int rang){
     ofstream output;
-    output.open(outputPrefix+"/comp"+to_string(rang)+".txt");
+    output.open(outputPrefix+"/core"+to_string(rang)+".txt");
     for (vector<int>::iterator it = compo.begin(); it != compo.end(); it++){
         output << *it << "\t" << G.Vertices[*it].label << "\t" << G.Vertices[*it].weight  << "\n";
     }
@@ -232,6 +232,10 @@ int main(int argc, char** argv) {
 
         //Finalement, on recommence la boucle while
         index = indexMax(G, vu_total);
+        if (index == -1) //Il ne reste plus de sommet à visiter
+        {
+            return 0;
+        }
         weight = G.Vertices[index].weight;
         vu_total[index] = 1;
 

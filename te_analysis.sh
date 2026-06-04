@@ -37,7 +37,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-#If READS_1, READS_2 or OUTDIR are not set, exit
+#If DFAM_FA or OUTDIR are not set, exit
 if [[ -z "$DFAM_FA"  || -z "$OUTDIR" ]]; then
     echo "Use: $0  --te-cons <dfam_consensus.fasta> -O <output_dir> [-p <threads>] [-k <k-mer size>]"
     echo "Default values: -p 8 -k 41 "
@@ -124,7 +124,7 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
   # -a : report all alignments
   # -q : input files are in fastq format
   # -p 8 : use 8 threads
-  # --very-sensitive : preset for very sensitive alignment
+  # --very-sensitive : preset for very sensitive alignment / removed for default mode
   # --dovetail : allow dovetailing alignments
   # -X 500 : maximum fragment length for valid paired-end alignments
   # -S : output SAM file
@@ -135,7 +135,6 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
       -q \
       -p 8 \
       --time \
-      --very-sensitive \
       -x TE_Dfam_${SPE} \
       --dovetail \
       -X 500 \
@@ -169,30 +168,30 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
 fi
 #endregion
 
-#region BOWTIE ALIGNMENT OF THE COMPONENTS
-if [[ -z "${SKIP_BOWTIE_COMPS}" ]]; then
+#region BOWTIE ALIGNMENT OF THE CORES
+if [[ -z "${SKIP_BOWTIE_CORES}" ]]; then
 
-  ##The number of components to compute
-   MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
-      for file in ${BASE_DIR}/comp*.txt; do
+  ##The number of cores to coreute
+   MAXI=0 #$(ls ${BASE_DIR}/core*.txt | wc -l)
+      for file in ${BASE_DIR}/core*.txt; do
         MAXI=$(( $MAXI + 1 ))
       done
-      echo "Number of comps : ${MAXI}"
+      echo "Number of cores : ${MAXI}"
 
 
-  # Print percentage every 1% (or every component if MAXI < 100)
+  # Print percentage every 1% (or every core if MAXI < 100)
     step=$(( MAXI / 100 ))
     if (( step == 0 )); then
         step=1
     fi
 
-  ##Compute the analysis over every component
+  ##coreute the analysis over every core
   for ((i=0; i<$MAXI; i++))
   do
 
       if (( (i + 1) % step == 0 )); then
           PERCENTAGE=$(( ((i + 1) * 100) / MAXI ))
-          echo "Processing component $i of $MAXI ($PERCENTAGE% complete)"
+          echo "Processing core $i of $MAXI ($PERCENTAGE% corelete)"
       fi
 
       mkdir -p ${BASE_DIR}/alignment_${i}
@@ -200,8 +199,8 @@ if [[ -z "${SKIP_BOWTIE_COMPS}" ]]; then
       ##Convert the unitigs into reads for bowtie2
 
     python3 ${BIN_DIR}/reads_to_align.py \
-        ${BASE_DIR}/comp${i}.txt \
-        ${BASE_DIR}/comp${i}.fa \
+        ${BASE_DIR}/core${i}.txt \
+        ${BASE_DIR}/core${i}.fa \
         0
     ## -f : input files are in fasta format
       ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
@@ -209,32 +208,32 @@ if [[ -z "${SKIP_BOWTIE_COMPS}" ]]; then
           -f \
           -p 1 \
           --time \
-          --very-sensitive \
           -x TE_Dfam_${SPE} \
+          -D 100 -R 3 -N 1 -L 20 -i S,1,0.50 \
           --dovetail \
           -X 500 \
-          -S ${BASE_DIR}/alignment_${i}/comp${i}.sam \
-          -U ${BASE_DIR}/comp${i}.fa &> ${BASE_DIR}/alignment_${i}/bowtie2_output.txt
+          -S ${BASE_DIR}/alignment_${i}/core${i}.sam \
+          -U ${BASE_DIR}/core${i}.fa &> ${BASE_DIR}/alignment_${i}/bowtie2_output.txt
 
 
       ${BIN_DIR}/samtools view -bS  \
-          ${BASE_DIR}/alignment_${i}/comp${i}.sam \
-          > ${BASE_DIR}/alignment_${i}/comp${i}.bam
+          ${BASE_DIR}/alignment_${i}/core${i}.sam \
+          > ${BASE_DIR}/alignment_${i}/core${i}.bam
 
 
-        rm ${BASE_DIR}/alignment_${i}/comp${i}.sam
+        rm ${BASE_DIR}/alignment_${i}/core${i}.sam
 
       python3 ${BIN_DIR}/filter_bam.py \
-          ${BASE_DIR}/alignment_${i}/comp${i}.bam \
+          ${BASE_DIR}/alignment_${i}/core${i}.bam \
           ${BASE_DIR}/aligned_Dfam${i}.txt
 
       :> ${BASE_DIR}/aligned_ref_AS${i}.txt
       :> ${BASE_DIR}/aligned_inter${i}.txt
       :> ${BASE_DIR}/aligned_Rb${i}.txt
 
-      ##Annotate the components nodes with the TE and ref genes informations
+      ##Annotate the cores nodes with the TE and ref genes informations
         python3 ${BIN_DIR}/add_ref_TE.py \
-                ${BASE_DIR}/comp${i}.txt \
+                ${BASE_DIR}/core${i}.txt \
                 ${BASE_DIR}/aligned_ref_AS${i}.txt \
                 ${BASE_DIR}/aligned_Dfam${i}.txt \
                 ${BASE_DIR}/aligned_Rb${i}.txt \
@@ -255,7 +254,7 @@ if [[ -z "${SKIP_BOWTIE_UNITIGS}" ]]; then
   mkdir -p ${BASE_DIR}/STAR_alignment_cons_dfam_all
 
   #Convert the unitigs into reads for star
-  cp ${DATA_DIR}/graph/outputNodes.txt ${BASE_DIR}/all_unitigs.txt
+  cp ${DATA_DIR}/graph/unitigs_extended_degree.nodes ${BASE_DIR}/all_unitigs.txt
   python3 ${BIN_DIR}/reads_to_align.py ${BASE_DIR}/all_unitigs.txt ${BASE_DIR}/all_unitigs.fa 0
 
   ###Bowtie2 alignment of the unitigs to the Dfam TE library
@@ -264,8 +263,8 @@ if [[ -z "${SKIP_BOWTIE_UNITIGS}" ]]; then
       -f \
       -p 8 \
       --time \
-      --very-sensitive \
       -x TE_Dfam_${SPE} \
+      -D 100 -R 3 -N 1 -L 20 -i S,1,0.50 \
       --dovetail \
       -X 500 -S ${BASE_DIR}/alignment_unitigs.sam \
       -U ${BASE_DIR}/all_unitigs.fa &> ${BASE_DIR}/bowtie2_output_unitigs.txt
@@ -302,7 +301,7 @@ if [[ -z "${SKIP_ANA_ALIGN}" ]]; then
     :> ${BASE_DIR}/aligned_inter_all.txt
 
     echo "Annotate the nodes with the TE"
-    ##Annotate the components nodes with the TE and ref genes informations
+    ##Annotate the cores nodes with the TE and ref genes informations
     python3 ${BIN_DIR}/add_ref_TE.py \
             ${BASE_DIR}/all_unitigs.txt \
             ${BASE_DIR}/aligned_ref_AS_all.txt \
@@ -374,7 +373,7 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
         ${RESULTS_DIR}/alignment/READS_sorted.bam
 
 
-    #Compute the TE coverage with bedtools
+    #coreute the TE coverage with bedtools
     echo "File conversion to BED"
 
     #Convert fasta to bed format
@@ -391,7 +390,7 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
         -i ${RESULTS_DIR}/alignment/READS_sorted.bam | sort -k1,1 -k2,2n \
         > ${RESULTS_DIR}/alignment/READS.sorted.bed
 
-    #Compute the coverage (-sorted option should work but here it raises an error)
+    #coreute the coverage (-sorted option should work but here it raises an error)
     ${BIN_DIR}/bedtools coverage \
         -a ${DFAM_FA}.bed \
         -b ${RESULTS_DIR}/alignment/READS.sorted.bed \
@@ -409,11 +408,11 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
         | awk 'BEGIN {print "TE\tBreath_Coverage\tCount\tDepth_Coverage\tRPKM"} {print $0}' \
         > ${RESULTS_DIR}/TE_coverage_count_ab.txt
 
-    #Keep only the line such counts > 0 and breadth coverage > 0.5
-    awk 'NR == 0 || $2 > 0.5 && $3 > 0 && $4 > 1' ${RESULTS_DIR}/TE_coverage_count_ab.txt > ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt
+    #Keep only the line such counts > 0 and breadth coverage > 0.5 and a depth coverage > 1
+    awk 'NR == 1 || $2 > 0.5 && $3 > 0 && $4 > 1' ${RESULTS_DIR}/TE_coverage_count_ab.txt > ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt
 
     #Keep only the line such counts > 0
-    awk 'NR == 0 || $3 > 0 ' ${RESULTS_DIR}/TE_coverage_count_ab.txt > ${RESULTS_DIR}/TE_coverage_count_ab_without_filtered.txt
+    awk 'NR == 1 || $3 > 0 ' ${RESULTS_DIR}/TE_coverage_count_ab.txt > ${RESULTS_DIR}/TE_coverage_count_ab_without_filtered.txt
 
 
 
@@ -424,44 +423,43 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
 
 fi
 #endregion
+#region TE VS coreS ANALYSIS
+if [[ -z "${SKIP_TE_VS_CORES}" ]]; then
 
-#region TE VS COMPONENTS ANALYSIS
-if [[ -z "${SKIP_TE_VS_COMPS}" ]]; then
+    echo "TE vs cores analysis ..."
 
-    echo "TE vs Components analysis ..."
+    #Getting TE in cores
 
-    #Getting TE in comps
-
-    MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
-    for file in ${BASE_DIR}/comp*.txt; do
+    MAXI=0 #$(ls ${BASE_DIR}/core*.txt | wc -l)
+    for file in ${BASE_DIR}/core*.txt; do
       MAXI=$(( $MAXI + 1 ))
     done
-    echo "Number of comps : ${MAXI}"
+    echo "Number of cores : ${MAXI}"
     :> ${RESULTS_DIR}/temp.txt
     :> ${RESULTS_DIR}/TE_from_cores.txt
     for ((i=0; i<$MAXI; i++))
     do
-      awk '$6 != "*"{print $6}' FS="\t" ${BASE_DIR}/comp${i}_annotated.nodes \
+      awk '$6 != "*"{print $6}' FS="\t" ${BASE_DIR}/core${i}_annotated.nodes \
       | sed 's/; /\n/g' \
       | sort -u  >> ${RESULTS_DIR}/temp.txt
 
-      awk '$6!="*" {print $6}' FS="\t" ${BASE_DIR}/comp${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> ${RESULTS_DIR}/TE_from_cores.txt
+      awk '$6!="*" {print $6}' FS="\t" ${BASE_DIR}/core${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> ${RESULTS_DIR}/TE_from_cores.txt
     done
     sort -u ${RESULTS_DIR}/TE_from_cores.txt > ${RESULTS_DIR}/TE_from_cores_sorted.txt
-    sort -u ${RESULTS_DIR}/temp.txt > ${RESULTS_DIR}/TE_in_comps.txt
+    sort -u ${RESULTS_DIR}/temp.txt > ${RESULTS_DIR}/TE_in_cores.txt
     rm ${RESULTS_DIR}/temp.txt
 
-    #Looking for TE that are in the counts file but not in the comps
+    #Looking for TE that are in the counts file but not in the cores
     awk 'NR==FNR{a[$1];next} !($1 in a){print $0}' FS="\t" \
-    ${RESULTS_DIR}/TE_in_comps.txt \
+    ${RESULTS_DIR}/TE_in_cores.txt \
     ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
-    > ${RESULTS_DIR}/TE_not_in_comps.txt
+    > ${RESULTS_DIR}/TE_not_in_cores.txt
 
-    #And the opposite : TE in comps but not in counts file
+    #And the opposite : TE in cores but not in counts file
     awk 'NR==FNR{a[$1];next} !($1 in a){print $0}' FS="\t" \
     ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
-    ${RESULTS_DIR}/TE_in_comps.txt \
-    > ${RESULTS_DIR}/TE_in_comps_not_in_counts.txt
+    ${RESULTS_DIR}/TE_in_cores.txt \
+    > ${RESULTS_DIR}/TE_in_cores_not_in_counts.txt
 
     #Now check the stats for             ${BASE_DIR}/all_unitigs.txt
     awk '$6 != "*"{print $6}' FS="\t"  ${BASE_DIR}/all_unitigs_annotated.nodes \
@@ -498,69 +496,110 @@ fi
 #region CONS_SEQ_ANALYSIS
 if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
 
-    echo "Analysis of comp consensus prediction..."
+    echo "Analysis of core consensus prediction..."
 
     #Getting the sequences from ${RESULTS_DIR}/other_cores_list.txt
     awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_potential_TE.fa
     head -1 ${RESULTS_DIR}/other_cores_list.txt > ${RESULTS_DIR}/other_cores_list.txt.sorted
     awk ' NR>1 {print $0}' ${RESULTS_DIR}/other_cores_list.txt | sort -k1,1n >> ${RESULTS_DIR}/other_cores_list.txt.sorted
-
-    #Align the consensus sequences to the Dfam TE library with bowtie2
-    ${BIN_DIR}/bowtie2/bowtie2 --wrapper basic-0 \
-      -a \
-      -f \
-      -p 8 \
-      --time \
-      --very-sensitive \
-      -x TE_Dfam_${SPE} \
-      --dovetail \
-      -X 500 -S ${BASE_DIR}/alignment_consensus.sam \
-      -U ${BASE_DIR}/core_potential_TE.fa &> ${BASE_DIR}/bowtie2_output_consensus.txt
-
-    ${BIN_DIR}/samtools view -bS \
-      ${BASE_DIR}/alignment_consensus.sam \
-      > ${BASE_DIR}/alignment_consensus.bam
-
-    rm ${BASE_DIR}/alignment_consensus.sam
-
-    python3 ${BIN_DIR}/filter_bam.py \
-      ${BASE_DIR}/alignment_consensus.bam \
-      ${BASE_DIR}/aligned_consensus.txt
-    awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_potential_TE_unsorted.txt
-    awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_potential_TE_unsorted.txt
-    awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_potential_TE_unsorted.txt
-    echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${BASE_DIR}/analysis_comp_all.txt
-    sort -k3,3gr ${BASE_DIR}/core_potential_TE_unsorted.txt | sort -u >> ${BASE_DIR}/analysis_comp_all.txt
-
-    echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${BASE_DIR}/analysis_comp_all.txt.sorted
-    sort -k1,1n ${BASE_DIR}/core_potential_TE_unsorted.txt  | sort -u >> ${BASE_DIR}/analysis_comp_all.txt.sorted
-
+    :>${BASE_DIR}/aligned_consensus.txt
     #Get the overall alignment rate from the bowtie2 output
     RATE=$(awk '$2==" overall alignment rate" {print $1}' FS="%" ${BASE_DIR}/bowtie2_output_unitigs.txt)
 
 
     #Get the ROC curves for the consensus sequences
     python3 ${BIN_DIR}/seq_cons_roc_curve.py \
-        ${RESULTS_DIR}/other_cores_list.txt \
+        ${RESULTS_DIR}/other_cores_list.txt.sorted \
         ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
         ${BASE_DIR}/aligned_consensus.txt \
-        ${BASE_DIR}/comp \
-        ${RESULTS_DIR}/output_roc_curve \
+        ${BASE_DIR}/core \
+        ${RESULTS_DIR}/roc_potential_TE_ \
         ${BASE_DIR}/all_unitigs_annotated.nodes \
         ${RATE}
 
+    python3 ${BIN_DIR}/unitigs_roc_curve.py \
+            ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
+            ${BASE_DIR}/all_unitigs_annotated.nodes \
+            ${RESULTS_DIR}/roc_curve_unitigs_
 
-    #Now idem with the 100 first comps
-    echo "Analysis of first 100 comp consensus prediction..."
+    end=`date +%s`
+    elapsed=`expr $end - $begin`
+    begin=`date +%s`
+    echo -e "Consensus sequences analysis time (in seconds): $elapsed \n"
+
+  :>${RESULTS_DIR}/TE_in_cores.txt
+  MAXI=0 
+      for file in ${RESULTS_DIR}/cores/core*.txt; do
+        MAXI=$(( $MAXI + 1 ))
+      done
+  for ((i=0; i<$MAXI; i++))
+  do
+    
+  echo "Core $i" >> ${RESULTS_DIR}/TE_in_cores.txt
+  #Using Dfam consensus
+  #awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes> ${RESULTS_DIR}/cores/core${i}_annotated_detailled.nodes
+  
+  #Using TE sampling
+  #awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes> ${RESULTS_DIR}/cores/core${i}_annotated_detailled.nodes
+  #awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes | awk 'BEGIN{FS=OFS="\t"} {n=split($6,a,"; "); res=""; delete v; for(i=1;i<=n;i++){sub(/_[0-9]+$/,"",a[i]); if(!v[a[i]]++){res=(res==""?a[i]:res "; " a[i])}} $6=res; print $0}' > ${RESULTS_DIR}/cores/core${i}_annotated.nodes;
+  awk '$6!="*" {print $6}' FS="\t" ${RESULTS_DIR}/cores/core${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> ${RESULTS_DIR}/TE_in_cores.txt
+  done
+  
+  awk 'BEGIN {print "Nb_TEs"} NF == 1 {print 0} NF>1 {print NF-1}' RS="Core" ${RESULTS_DIR}/TE_in_cores.txt  > ${RESULTS_DIR}/nb_TE_in_cores.txt
+  awk 'BEGIN {print "TE_list"; RS="Core "; ORS="; "} NF==1 {printf "\n"}  NF>1 {for (i=2;i<=NF;i++) print $i; printf "\n"}'  ${RESULTS_DIR}/TE_in_cores.txt > ${RESULTS_DIR}/list_TE.txt
+  
+  paste ${RESULTS_DIR}/extended_t_cores_summary.tsv ${RESULTS_DIR}/nb_TE_in_cores.txt ${RESULTS_DIR}/list_TE.txt > ${RESULTS_DIR}/extended_t_cores_summary_SOLUTION.tsv 
+  
+  awk 'BEGIN {t=0; f=0} NR>1 && $3=="Potential TE" && $9>0 {t=t+1} NR>1 && $3=="Potential TE" && $9==0 {f=f+1; print $0} END {print t,f}' FS="\t" ${RESULTS_DIR}/extended_t_cores_summary_SOLUTION.tsv > ${RESULTS_DIR}/false_positive_cores.tsv
+
+  awk 'NR>1 {print $1}' ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt  | sort -u > ${RESULTS_DIR}/valide_TE.txt
+  sort -u  ${RESULTS_DIR}/TE_in_cores.txt | awk '$1!="Core" {print $0}' FS=" "  | sort -u > ${RESULTS_DIR}/found_TE.txt
+  echo -e "\nNumber of TEs in cores that are in the counts file : "\
+   $(comm -12 ${RESULTS_DIR}/valide_TE.txt ${RESULTS_DIR}/found_TE.txt | wc -l ) \
+   " over " $(wc -l ${RESULTS_DIR}/valide_TE.txt | awk '{print $1}') " \n"
+fi
+#endregion
+
+end_final=`date +%s`
+elapsed_final=`expr $end_final - $start`
+echo -e "Total TE analysis pipeline time (in seconds): $elapsed_final \n"
+
+exit 0
+
+###Removed roc
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+###Removed roc
+#Now idem with the 100 first cores
+    echo "Analysis of first 100 core consensus prediction..."
     awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_potential_TE_100_unsorted.txt
     awk 'NR>1 && $1 < 100 {print $1"\t"$2"\t"$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
     awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
   awk 'NR>1 && $1 < 100 {print $0}' FS="\t" ${RESULTS_DIR}/stretchCG_cores_list.txt >> ${BASE_DIR}/core_potential_TE_100_unsorted.txt
 
-    echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/other_cores_list_100.txt
+    echo -e "Core_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/other_cores_list_100.txt
     sort -k3,3gr ${BASE_DIR}/core_potential_TE_100_unsorted.txt | uniq >> ${RESULTS_DIR}/other_cores_list_100.txt
 
-    echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/other_cores_list_100.txt.sorted
+    echo -e "Core_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/other_cores_list_100.txt.sorted
     sort -k1,1n ${BASE_DIR}/core_potential_TE_100_unsorted.txt | uniq >> ${RESULTS_DIR}/other_cores_list_100.txt.sorted
 
     rm ${BASE_DIR}/core_potential_TE_100_unsorted.txt
@@ -572,8 +611,8 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
       -f \
       -p 8 \
       --time \
-      --very-sensitive \
       -x TE_Dfam_${SPE} \
+      -D 100 -R 3 -N 1 -L 20 -i S,1,0.50 \
       --dovetail \
       -X 500 -S ${BASE_DIR}/alignment_consensus_100.sam \
       -U ${BASE_DIR}/core_potential_TE_100.fa &> ${BASE_DIR}/bowtie2_output_consensus_100.txt
@@ -592,24 +631,24 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
         ${RESULTS_DIR}/other_cores_list_100.txt \
         ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
         ${BASE_DIR}/aligned_consensus_100.txt \
-        ${BASE_DIR}/comp \
+        ${BASE_DIR}/core \
         ${RESULTS_DIR}/output_roc_curve_100 \
         ${BASE_DIR}/all_unitigs_annotated.nodes \
         ${RATE}
 
 
-      #Now idem with the all comps
-        echo "Analysis of all comp consensus prediction..."
+      #Now idem with the all cores
+        echo "Analysis of all core consensus prediction..."
         awk 'NR>1  {print $0}' FS="\t" ${RESULTS_DIR}/other_cores_list.txt > ${BASE_DIR}/core_all_unsorted.txt
         awk 'NR>1  {print $1"\t"$2"\t"$3}' FS="\t" ${RESULTS_DIR}/microsatellite_cores_list.txt  >> ${BASE_DIR}/core_all_unsorted.txt
         awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/stretchAT_cores_list.txt >> ${BASE_DIR}/core_all_unsorted.txt
         awk 'NR>1 {print $0}' FS="\t" ${RESULTS_DIR}/stretchCG_cores_list.txt >> ${BASE_DIR}/core_all_unsorted.txt
 
 
-        echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/all_cores_list.txt
+        echo -e "Core_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/all_cores_list.txt
         sort -k3,3gr ${BASE_DIR}/core_all_unsorted.txt | uniq >> ${RESULTS_DIR}/all_cores_list.txt
 
-        echo -e "Comp_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/all_cores_list.txt.sorted
+        echo -e "Core_ID \t Seq_consensus \t Max abundance" > ${RESULTS_DIR}/all_cores_list.txt.sorted
         sort -k1,1n ${BASE_DIR}/core_all_unsorted.txt | uniq >> ${RESULTS_DIR}/all_cores_list.txt.sorted
 
         rm ${BASE_DIR}/core_all_unsorted.txt
@@ -621,8 +660,8 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
           -f \
           -p 8 \
           --time \
-          --very-sensitive \
           -x TE_Dfam_${SPE} \
+          -D 100 -R 3 -N 1 -L 20 -i S,1,0.50 \
           --dovetail \
           -X 500 -S ${BASE_DIR}/alignment_consensus_all.sam \
           -U ${BASE_DIR}/core_all.fa &> ${BASE_DIR}/bowtie2_output_consensus_all.txt
@@ -640,53 +679,7 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
         ${RESULTS_DIR}/all_cores_list.txt \
         ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
         ${BASE_DIR}/aligned_consensus_all.txt \
-        ${BASE_DIR}/comp \
+        ${BASE_DIR}/core \
         ${RESULTS_DIR}/output_roc_curve_all \
         ${BASE_DIR}/all_unitigs_annotated.nodes \
         ${RATE}
-
-  #Look at the max extended degree of the missed TEs to understand if they are in small components or isolated nodes
-  #This solution is quick and dirty, it should be optimised with a python script later
-  awk 'NR>1 {print $1}' ${RESULTS_DIR}/TE_not_in_comps.txt > ${RESULTS_DIR}/missing_TE_names.txt
-  : > ${RESULTS_DIR}/max_extended_deg_missed_TE.txt
-  while read p;
-   do
-     grep "$p" ${BASE_DIR}/all_unitigs_annotated.nodes \
-     | awk 'BEGIN {max=0} $4>max{max=$4} END {print max}' >> ${RESULTS_DIR}/max_extended_deg_missed_TE.txt
-  done < ${RESULTS_DIR}/missing_TE_names.txt
-
-  #paste Te_not_in_comps.txt and add the max extended degree
-  sed -i '1s/^/Max_ext_deg\n/' ${RESULTS_DIR}/max_extended_deg_missed_TE.txt
-  paste ${RESULTS_DIR}/TE_not_in_comps.txt ${RESULTS_DIR}/max_extended_deg_missed_TE.txt \
-    > ${RESULTS_DIR}/TE_not_in_comps_with_max_extended_deg.txt
-
-
-
-    end=`date +%s`
-    elapsed=`expr $end - $begin`
-    begin=`date +%s`
-    echo -e "Consensus sequences analysis time (in seconds): $elapsed \n"
-
-    python3 ${BIN_DIR}/unitigs_roc_curve.py \
-            ${RESULTS_DIR}/TE_coverage_count_ab_filtered.txt \
-            ${BASE_DIR}/all_unitigs_annotated.nodes \
-            ${RESULTS_DIR}/output_roc_curve_unitigs
-fi
-#endregion
-
-end_final=`date +%s`
-elapsed_final=`expr $end_final - $start`
-echo -e "Total TE analysis pipeline time (in seconds): $elapsed_final \n"
-
-exit 0
-
-:>results/TE_in_comps.txt
-MAXI=0 #$(ls ${BASE_DIR}/comp*.txt | wc -l)
-    for file in results/cores/comp*.txt; do
-      MAXI=$(( $MAXI + 1 ))
-    done
-for ((i=0; i<$MAXI; i++))
-do
-  echo "Core $i" >> results/TE_in_comps.txt
-   awk '$6!="*" {print $6}' FS="\t" results/cores/comp${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> results/TE_in_comps.txt
-done

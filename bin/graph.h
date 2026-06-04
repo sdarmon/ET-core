@@ -10,6 +10,7 @@ using namespace std;
 
 
 
+
 // ===========================================================================
 //                                  Structures
 // ===========================================================================
@@ -103,6 +104,7 @@ class Graph
     void add(int val,int weight, string labelEdge);
 
     Neighbor* link(int start, int end);
+
 
     vector<Neighbor>* Neighbors(int n);
     void weighing();

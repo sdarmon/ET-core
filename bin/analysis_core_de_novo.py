@@ -1,4 +1,4 @@
-#The goal of this function is to analyse the comp.txt file containing sequences in order to compute the
+#The goal of this function is to analyse the core.txt file containing sequences in order to compute the
 #number of poly(A) (represented as five consecutive A's) in the sequences; the ratio of microsatellites
 #(repeated sequences of 1 to 6 nucleotides) in the sequences; and the annotated genes that are intersecting
 # with the sequences.
@@ -131,7 +131,7 @@ def count_microsat(seq):
 
     return (m, seq_m, ratio)
 
-#For each comp, we will compute its degree in the induced subgraph
+#For each core, we will compute its degree in the induced subgraph
 #and its maximal neighbor.
 adjacent = [[] for _ in range(nb_comps)]
 ids_save={}
@@ -173,7 +173,7 @@ for i in range(nb_comps):
 
 #Total output should look like :
 #ID \t Representative \t Repeat type \t TE likelihood \t Max extended degree \t Max abundance \t Number of adjacent extended-t-cores \t Strongly connected to
-#Where ID is the ID of the comp
+#Where ID is the ID of the core
 #Repeat type is A/T stretch; C/G stretch; Microsat (regex) XX%; others
 #TE likelihood is -; +; ++; +++; depending on the repeat type other metrics
 #Strongly connected to is the "ID (number of paths between them)"
@@ -192,7 +192,7 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
             with open(Arg[4] + "_stretchCG.txt.temp", 'w') as f4:
                 with open(Arg[4] + "_others.txt.temp", 'w') as f3:
                     for i in range(nb_comps):
-                        #Reading the sequences from the comp.txt file and compute the average number of poly(A) and the ratio of microsatellites
+                        #Reading the sequences from the core.txt file and compute the average number of poly(A) and the ratio of microsatellites
                         seqs = []
                         joined_seqs = ''
                         total_poly = 0
@@ -214,7 +214,17 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
                                     total_length += len(L[1])
                                     deg_max=max(deg_max, int(L[2]))
                                     ab_max= max(ab_max, abundance[int(L[0])])
+                        #We count the overall ratio of microsat in the core
                         m, seq_m, r = count_microsat(joined_seqs)
+
+                        #We count the ratio of unitigs of the core having at least 0.5 microsat
+                        nb_microsat = 0
+                        for seq in seqs:
+                            m_seq, seq_m_seq, r_seq = count_microsat(seq)
+                            if r_seq >= 0.5:
+                                nb_microsat+=1
+                        r_seqs= nb_microsat/len(seqs)
+
                         if total_poly / len(seqs) >= 0.75:
                             f2.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
                             type_rep="A/T stretch"
@@ -223,14 +233,14 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
                             f4.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
                             type_rep="C/G stretch"
                             #score-=1
-                        if r >= 0.4:
+                        if r >= 0.5 or r_seqs >= 0.5:
                             f1.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\t{seq_m}\t{r}\n")
                             texte="Microsat "+str(seq_m)+" ("+str(round(r*100))+"%)"
                             if type_rep=="":
                                 type_rep= texte
                             else:
                                 type_rep=type_rep+" and "+texte
-                        if total_poly / len(seqs) < 0.75 and  total_CG / len(seqs) < 0.75 and r < 0.4 :
+                        if total_poly / len(seqs) < 0.75 and  total_CG / len(seqs) < 0.75 and (r < 0.5 and r_seqs < 0.5) :
                             f3.write(f"{i}\t{seq_consensium[i]}\t{ab_max}\n")
                             type_rep = "Potential TE"
                             score+=1
@@ -250,7 +260,7 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
 
                         #Write in f5
                         #ID \t Representative \t Repeat type \t TE likelihood \t Max extended degree \t Max abundance \t Number of adjacent extended-t-cores \t Strongly connected to
-                        #Where ID is the ID of the comp
+                        #Where ID is the ID of the core
                         #Repeat type is A/T stretch; C/G stretch; Microsat (regex) XX%; others
                         #TE likelihood is -; +; ++; +++; depending on the repeat type other metrics
                         #Strongly connected to is the "ID (number of paths between them)"

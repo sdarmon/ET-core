@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <sstream>
 #include <queue>
+#include <unordered_map>
 // ===========================================================================
 //                             Include Project Files
 // ===========================================================================
@@ -294,17 +295,15 @@ void Graph::BFS_func_dedupli(int threshold ,queue<int> &aVoir,vector<int> &vu, s
 typedef map<pair<int,int>,pair<int,int>> dic;
 
 string reverse_complement(string a){
-    string aux = "";
-    for (int i = a.size()-1; i>=0; i--){
-        if (a[i] == 'A'){
-            aux = aux + 'T';
-        } else if (a[i] == 'T'){
-            aux = aux + 'A';
-        } else if (a[i] == 'G'){
-            aux = aux + 'C';
-        } else {
-            aux = aux + 'G';
-        }
+    int n = a.size();
+    string aux(n, ' '); // Alloue la mémoire une seule fois
+    for (int i = 0; i < n; i++){
+        char c = a[n - 1 - i];
+        if (c == 'A')      aux[i] = 'T';
+        else if (c == 'T') aux[i] = 'A';
+        else if (c == 'G') aux[i] = 'C';
+        else if (c == 'C') aux[i] = 'G';
+        else               aux[i] = c;
     }
     return aux;
 }
@@ -497,52 +496,98 @@ void Graph::weighingANode(int source, int rayon) {
     Vertices[source].weight = mini;
 }
 
+struct BFSElement {
+    Neighbor* node;
+    int rayonCourant;
+
+    // Surcharge de l'opérateur < pour ordonner la file de priorité.
+    // std::priority_queue est un max-heap par défaut, donc l'élément
+    // avec le plus grand rayonCourant sera toujours au sommet (top).
+    bool operator<(const BFSElement& other) const {
+        return rayonCourant < other.rayonCourant;
+    }
+};
+
 //Definition de BFScatch permettant de récupérer les strings des sommets à distance le rayon du sommet source
-void Graph::BFScatch(vector<string> &kmers_at_distance_d,vector<Neighbor*> &aVoir,vector<int> &vu,vector<int> &rayons) {
-    if (aVoir.size() == 0) { //Cas de terminaison, on a terminé le BFS
-        return;
+void Graph::BFScatch(vector<string> &kmers_at_distance_d, vector<Neighbor*> &aVoir, vector<int> &vu, vector<int> &rayons) {
+    priority_queue<BFSElement> pq;
+
+    // On peuple la file de priorité avec les voisins initiaux
+    for (size_t i = 0; i < aVoir.size(); ++i) {
+        BFSElement elem;
+        elem.node = aVoir[i];
+        elem.rayonCourant = rayons[i];
+        pq.push(elem);
     }
-    int rayonCourant = rayons.front();
-    rayons.erase(rayons.begin());
-    Neighbor* node = aVoir.front();
-    aVoir.erase(aVoir.begin());
 
+    // Clé : ID du sommet (int) -> Valeur : Rayon restant maximal trouvé (int)
+    unordered_map<int, int> visited;
+    // On initialise la source (vu[0]) avec le rayon initial maximal
+    if (!vu.empty() && !rayons.empty()) {
+        visited[vu[0]] = rayons[0] + 1;
+    }
 
-    if (rayonCourant == 0) {
-        if (find(vu.begin(),vu.end(),node->val) != vu.end()) { //Cas où le sommet a été vu par le BFS
-            vu.push_back(node->val);
-            if (node->label[1] == 'F') {
-                //On ajoute le 1er k-mer de node
-                kmers_at_distance_d.push_back(Vertices[node->val].label.substr(0,kmer));
-            } else {
-                //On ajoute le 1er k-mer du reverse complement de node
-                kmers_at_distance_d.push_back(reverse_complement(Vertices[node->val].label).substr(0,kmer));
-            }
-            return BFScatch(kmers_at_distance_d,aVoir,vu,rayons);
+    while (!pq.empty()) {
+        BFSElement curr = pq.top();
+        pq.pop();
+
+        Neighbor* node = curr.node;
+        int rayonCourant = curr.rayonCourant;
+
+        // Sécurité : si le rayon restant est négatif, on arrête ce chemin
+        if (rayonCourant < 0) {
+            continue;
         }
-    }
 
-    if (find(vu.begin(),vu.end(),node->val) != vu.end()) { //Cas où le sommet a été vu par le BFS
-        return BFScatch(kmers_at_distance_d,aVoir,vu,rayons);
-    }
-    vu.push_back(node->val);
-    if (rayonCourant + kmer - 1 >= Vertices[node->val].label.size()) {
-        for (vector<Neighbor>::iterator it = Neighbors(node->val)->begin(); it != Neighbors(node->val)->end(); ++it){
-            if (it->label[0] == node->label[1]){
-                aVoir.push_back(&(*it));
-                rayons.push_back(rayonCourant + kmer - 1 - Vertices[node->val].label.size());
+        auto it = visited.find(node->val);
+        if (it != visited.end()) {
+            // Si on a déjà visité ce sommet avec un rayon restant strictement plus petit,
+            // alors le chemin actuel est strictement plus long, on l'ignore
+            if (it->second < rayonCourant) {//C'est cette condition qui permet l'invariance du résultat pour les
+                //permutations des sommets du graphe
+                continue;
             }
-        }
-    } else {
-        //On ajoute le k-mer de node
-        if (node->label[1] == 'F') {
-            kmers_at_distance_d.push_back(Vertices[node->val].label.substr(rayonCourant,kmer));
+            // Sinon, on a trouvé un chemin plus court (rayon restant plus grand),
+            // on met à jour la table de hachage.
+            it->second = rayonCourant;
         } else {
-            kmers_at_distance_d.push_back(reverse_complement(Vertices[node->val].label).substr(rayonCourant,kmer));
+            // Première visite du sommet, on l'insère dans la table de hachage
+            visited[node->val] = rayonCourant;
+        }
+
+        const string& label = Vertices[node->val].label;
+
+        if (rayonCourant == 0) {
+            if (node->label[1] == 'F') {
+                kmers_at_distance_d.push_back(label.substr(0, kmer));
+            } else {
+                string suffix = label.substr(label.size() - kmer, kmer);
+                kmers_at_distance_d.push_back(reverse_complement(suffix));
+            }
+            continue;
+        }
+
+        if (rayonCourant + kmer - 1 >= label.size()) {
+            for (vector<Neighbor>::iterator it = Neighbors(node->val)->begin(); it != Neighbors(node->val)->end(); ++it){
+                if (it->label[0] == node->label[1]){
+                    BFSElement next_elem;
+                    next_elem.node = &(*it);
+                    next_elem.rayonCourant = rayonCourant + kmer - 1 - label.size();
+                    pq.push(next_elem);
+                }
+            }
+        } else {
+            if (node->label[1] == 'F') {
+                kmers_at_distance_d.push_back(label.substr(rayonCourant, kmer));
+            } else {
+                int start_pos = label.size() - rayonCourant - kmer;
+                string sub = label.substr(start_pos, kmer);
+                kmers_at_distance_d.push_back(reverse_complement(sub));
+            }
         }
     }
-    return BFScatch(kmers_at_distance_d,aVoir,vu,rayons);
 }
+
 
 //Definition de greedy_Hamming_cluster permettant de trouver le nombre de classes de sequences de kmers_at_distance_d
 //qui sont à distance d'Hamming d'au plus d nucléotides de l'une des autres séquences de la classe.
@@ -586,7 +631,13 @@ int Graph::greedy_Hamming_cluster(vector<string> &kmers_at_distance_d, int d){
             }
         }
     }
-    return nb_classes;
+    set<int> unique_classes;
+    for (int i = 0; i < taille; i++){
+        if (classes[i] > 0) {
+            unique_classes.insert(classes[i]);
+        }
+    }
+    return unique_classes.size();
 }
 
 //Permet de donner un poids à un sommet, correspondant aux nombres de sommets à distance le rayon qui sont distants (distance de Hamming) de moins de d nucléotides.
@@ -639,17 +690,19 @@ void Graph::weighingANodeGraphDuppli(int source, int rayon) {
 
 //Permet de donner un poids à tous les sommets du graphe.
 void Graph::weighingAllNodes(int rayon, int d) {
-    if (d==0){
-        for (vector<Node>::iterator it = Vertices.begin(); it != Vertices.end(); ++it){
-            weighingANode(it->val, rayon);
+    int size = Vertices.size();
+    if (d == 0){
+        #pragma omp parallel for schedule(dynamic)
+        for (int i = 0; i < size; ++i) {
+            weighingANode(Vertices[i].val, rayon);
         }
     } else {
-        for (vector<Node>::iterator it = Vertices.begin(); it != Vertices.end(); ++it){
-            weighingANodeHamming(it->val, rayon,d);
+        #pragma omp parallel for schedule(dynamic)
+        for (int i = 0; i < size; ++i) {
+            weighingANodeHamming(Vertices[i].val, rayon, d);
         }
     }
 }
-
 //Permet de donner un poids à tous les sommets du graphe.
 void Graph::weighingAllNodesGraphDuppli(int rayon) {
     for (vector<Node>::iterator it = Vertices.begin(); it != Vertices.end(); ++it){
@@ -706,6 +759,10 @@ void read_node_file_weighted( ifstream &node_file,vector<Node>& seqs)
     string p;
     int compt;
     while (getline(node_file, line)) {
+        // Ignorer les lignes vides ou les retours chariots seuls
+        if (line.empty() || line == "\r") {
+            continue;
+        }
         istringstream ss(line);
         string substr;
         compt=0;
@@ -720,8 +777,11 @@ void read_node_file_weighted( ifstream &node_file,vector<Node>& seqs)
             }
             compt++;
         }
-        Node node(u,v,p);
-        seqs.push_back(node);
+        // On n'ajoute que si la ligne était valide et complète
+        if (compt >= 3) {
+            Node node(u, v, p);
+            seqs.push_back(node);
+        }
     }
     return;
 }
@@ -732,9 +792,13 @@ void read_edge_file( ifstream &edge_file, vector<Edge>& edges ) {
     edges.clear();
     string line;
     int u,v;
-    char p[3];
+    char p[4];
     int compt;
     while (getline(edge_file, line)) {
+        // Ignorer les lignes vides ou les retours chariots seuls
+        if (line.empty() || line == "\r") {
+            continue;
+        }
         istringstream ss(line);
         string substr;
         compt=0;
@@ -745,12 +809,18 @@ void read_edge_file( ifstream &edge_file, vector<Edge>& edges ) {
             else if (compt == 1){
                 v = stoi(substr);
             } else if (compt == 2){
-                strcpy( p, substr.c_str() );
+                if (!substr.empty() && substr.back() == '\r') {
+                    substr.pop_back();
+                }
+                strncpy(p, substr.c_str(), 2);
+                p[2] = '\0';
             }
             compt++;
         }
-        Edge e(u,v,0,p);
-        edges.push_back(e);
+         if (compt >= 3) {
+            Edge e(u, v, 0, p);
+            edges.push_back(e);
+        }
     }
 }
 

@@ -1,5 +1,5 @@
-#This code read a a comp%i.txt file and a seq_intersectionTE%i.txt file
-#and edit the comp%i.txt file to add the TE reference in the seq_intersectionTE%i.txt file for every line
+#This code read a a core%i.txt file and a seq_intersectionTE%i.txt file
+#and edit the core%i.txt file to add the TE reference in the seq_intersectionTE%i.txt file for every line
 # that is present in the seq_intersectionTE%i.txt file
 
 
@@ -8,7 +8,7 @@ import sys
 Arg = sys.argv[:]
 
 if len(Arg) not in [4,7,8]:
-    print("Use : " + Arg[0] + " comp%i.txt seq_intersectionRef%i.txt seq_intersectionConsensusDfam%i.txt seq_intersectionConsensusRb%i.txt seq_intergenes$i.txt file.abundance [threshold]")
+    print("Use : " + Arg[0] + " core%i.txt seq_intersectionRef%i.txt seq_intersectionConsensusDfam%i.txt seq_intersectionConsensusRb%i.txt seq_intergenes$i.txt file.abundance [threshold]")
     exit()
 
 if len(Arg) in [7,8]:
@@ -16,7 +16,7 @@ if len(Arg) in [7,8]:
         threshold = int(Arg[7])
     else:
         threshold = 0
-    #Reading intersectionRef%i.txt into a list to get the gene intersection with the comps
+    #Reading intersectionRef%i.txt into a list to get the gene intersection with the cores
     dic_index2gene = {}
     exon_non_codant = {}
     potential_intron = {}
@@ -88,7 +88,7 @@ if len(Arg) in [7,8]:
 
 
 
-    #Reading intersectionConsensus%i.txt into a list to get the TE consensus intersection with the comps
+    #Reading intersectionConsensus%i.txt into a list to get the TE consensus intersection with the cores
     dic_index2consDfam = {}
 
     with open(Arg[3], 'r') as f:
@@ -97,7 +97,7 @@ if len(Arg) in [7,8]:
             gene = L[2]
             if gene == "*":
                 continue
-            index = int(L[0].split('_')[1]) #Here the index is the line of comp%i.txt file
+            index = int(L[0].split('_')[1]) #Here the index is the line of core%i.txt file
             AS = int(L[13].split(':')[2])
             if index not in dic_index2consDfam:
                 dic_index2consDfam[index] = [(gene,AS)]
@@ -105,7 +105,7 @@ if len(Arg) in [7,8]:
                 dic_index2consDfam[index].append((gene,AS))
 
 
-    #Reading intersectionConsensusRB%i.txt into a list to get the TE consensus intersection with the comps
+    #Reading intersectionConsensusRB%i.txt into a list to get the TE consensus intersection with the cores
     dic_index2consRb = {}
 
     with open(Arg[4], 'r') as f:
@@ -123,7 +123,7 @@ if len(Arg) in [7,8]:
                 dic_index2consRb[index].append(gene)
 
 
-    #Reading intersectionGenes%i.txt into a list to get the gene intersection with the comps$i
+    #Reading intersectionGenes%i.txt into a list to get the gene intersection with the cores$i
     dic_index2intergene = {}
     with open(Arg[5], 'r') as f:
         for line in f:
@@ -147,17 +147,17 @@ if len(Arg) in [7,8]:
             abundance.append(line.split('.')[0])
 
 
-    #Reading every line of comp%i.txt and adding the TE reference if the index of the line is in dic_index2TE
-    #Writing the new line in a new file comp%i.txt
-    #Here there is a point to be careful, the index of the line in comp%i.txt (a subset from the total number of nodes)
-    # is not the same as the index in seq_intersectionTE%i.txt (from 0 to the number of nodes of the comp)
+    #Reading every line of core%i.txt and adding the TE reference if the index of the line is in dic_index2TE
+    #Writing the new line in a new file core%i.txt
+    #Here there is a point to be careful, the index of the line in core%i.txt (a subset from the total number of nodes)
+    # is not the same as the index in seq_intersectionTE%i.txt (from 0 to the number of nodes of the core)
 
     with open(Arg[1], 'r') as f:
         file_name= Arg[1]
         last_dot= file_name.rfind('.')
         prefix= file_name[:last_dot]
         with open(prefix + "_annotated.nodes", 'w') as f_out:
-            i = 0 #Here is the index of the line in comp%i.txt
+            i = 0 #Here is the index of the line in core%i.txt
             for line in f:
                 L = line[:-1].split('\t')
                 ind=L[0]
@@ -207,7 +207,7 @@ elif len(Arg) == 4 :
             gene = L[15]
             if gene == "*":
                 continue
-            index = int(L[3].split('_')[1]) #Here the index is the line of comp%i.txt file
+            index = int(L[3].split('_')[1]) #Here the index is the line of core%i.txt file
             AS = int(L[18])
             if index not in dic_index2consDfam:
                 dic_index2consDfam[index] = [(gene,AS)]
@@ -222,17 +222,17 @@ elif len(Arg) == 4 :
             abundance.append(line.split('.')[0])
 
 
-    #Reading every line of comp%i.txt and adding the TE reference if the index of the line is in dic_index2TE
-    #Writing the new line in a new file comp%i.txt
-    #Here there is a point to be careful, the index of the line in comp%i.txt (a subset from the total number of nodes)
-    # is not the same as the index in seq_intersectionTE%i.txt (from 0 to the number of nodes of the comp)
+    #Reading every line of core%i.txt and adding the TE reference if the index of the line is in dic_index2TE
+    #Writing the new line in a new file core%i.txt
+    #Here there is a point to be careful, the index of the line in core%i.txt (a subset from the total number of nodes)
+    # is not the same as the index in seq_intersectionTE%i.txt (from 0 to the number of nodes of the core)
 
     with open(Arg[1], 'r') as f:
         file_name= Arg[1]
         last_dot= file_name.rfind('.')
         prefix= file_name[:last_dot]
-        with open(prefix + "_annotated_RM.nodes", 'w') as f_out:
-            i = 0 #Here is the index of the line in comp%i.txt
+        with open(prefix + "_annotated.nodes", 'w') as f_out:
+            i = 0 #Here is the index of the line in core%i.txt
             for line in f:
                 L = line[:-1].split('\t')
                 ind=L[0]

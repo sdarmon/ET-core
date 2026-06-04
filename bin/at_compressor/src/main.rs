@@ -5,7 +5,6 @@ use std::process;
 
 // Compression imports
 use flate2::Compression;
-use flate2::read::GzDecoder;
 use flate2::read::MultiGzDecoder;
 use flate2::write::GzEncoder;
 
@@ -83,19 +82,12 @@ fn main() {
             if b == b'\n' || b == b'\r' {
                 continue;
             }
-
-            // Track consecutive identical bytes
             if b == prev_byte {
                 count += 1;
             } else {
                 prev_byte = b;
                 count = 1;
             }
-
-            // Check if the current nucleotide is A or T (case-insensitive just in case)
-            //let is_at = b == b'A' || b == b'T' || b == b'a' || b == b't';
-            
-            // Keep the base if it is NOT an A/T, OR if the streak count is within our window `w`
             if count <= w { //if !is_at || count <= w {
                 out_seq.push(b);
             }
@@ -104,6 +96,36 @@ fn main() {
         // Append a newline to the compressed sequence and write to file
         out_seq.push(b'\n');
         writer.write_all(&out_seq).unwrap();
+
+        //Check if it not a fasta file (i.e. plus start with '>')
+        if !plus.is_empty() && plus[0] == b'>' {
+            writer.write_all(&plus).unwrap();
+
+            // Compress the Sequence
+            prev_byte = b'\0';
+            count = 0;
+            out_seq.clear();
+
+            for &b in &qual {
+                // Skip carriage returns and newlines from the raw byte array
+                if b == b'\n' || b == b'\r' {
+                    continue;
+                }
+                if b == prev_byte {
+                    count += 1;
+                } else {
+                    prev_byte = b;
+                    count = 1;
+                }
+                if count <= w { //if !is_at || count <= w {
+                    out_seq.push(b);
+                }
+            }
+
+            // Append a newline to the compressed sequence and write to file
+            out_seq.push(b'\n');
+            writer.write_all(&out_seq).unwrap();
+        }
     }
 
     // Explicitly flush to ensure the Gzip stream is finished correctly

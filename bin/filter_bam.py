@@ -48,19 +48,22 @@ def filter_txt(input_bam, output_txt):
     max_scores = {}
     #iterate through the alignments in the input bam file
     for alignment in input_bam_file:
-        #get the alignment score
-        score = alignment.mapping_quality
-        #get the read name
-        read_name = alignment.query_name
-        #if the read name is not in the dictionary, add it
-        if read_name not in max_scores:
-            max_scores[read_name] = (score, [alignment])
-        #if the read name is in the dictionary, update the maximal score if needed
-        else:
-            if score > max_scores[read_name][0]:
+        #Test if the tag "AS" is in alignment
+        if alignment.has_tag("AS"):
+            #get the alignment score
+            score = alignment.get_tag("AS")
+            #get the read name
+            read_name = alignment.query_name
+
+            #if the read name is not in the dictionary, add it
+            if read_name not in max_scores:
                 max_scores[read_name] = (score, [alignment])
-            elif score == max_scores[read_name][0]:
-                max_scores[read_name][1].append(alignment)
+            #if the read name is in the dictionary, update the maximal score if needed
+            else:
+                if score > max_scores[read_name][0]:
+                    max_scores[read_name] = (score, [alignment])
+                elif score == max_scores[read_name][0]:
+                    max_scores[read_name][1].append(alignment)
     #close the input bam file
     input_bam_file.close()
     #open the output txt file where each line is the txt alignment

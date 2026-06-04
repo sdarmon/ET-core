@@ -114,6 +114,8 @@ elif Arg[2] == "top1":
         M += el
         if M >= 99:
             break
+        if size==m:
+            break
         size += 1
     print(size)
 
@@ -160,6 +162,8 @@ elif Arg[2] == "top0001":
     for el in Y:
         M += el
         if M >= 999:
+            break
+        if size==m:
             break
         size += 1
     print(size)
