@@ -50,6 +50,9 @@ Some additional parameters can be specified:
 - `-d`: extended degree distance to use for the weighting of the nodes (default: 10)
 - `-h`: hamming distance to use for the weighting of the nodes (default: 2)
 - `-t`: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)
+- `-a`: Abundance minimal for keeping the k-mers (default: 2)
+- `--max-memory`: max memory to use (in MBytes, default: 14000)
+- `--no-fastp` : do not run fastp on the reads (not recommended if the reads are not curated)
 - `--sample` : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
 
 
@@ -86,7 +89,7 @@ The output directory will contain the following files and directories:
     ├── results/
     │   ├── extended_t_cores_summary.tsv 
     │   ├── cores/
-    │   │   └── comp${i}.nodes (unitigs of the ith extended-t-core)
+    │   │   └── core${i}.nodes (unitigs of the ith extended-t-core)
     │   └── induced_cores_subgraph/
     │       └── connecting_paths.txt (id_core1 `\t` id_core2 `\t` path_between_cores)
     │
