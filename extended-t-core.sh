@@ -259,6 +259,8 @@ if [[ -z "${SKIP_BCALM}" ]]; then
       -max-memory ${MAX_MEM} \
       -out ${DATA_DIR}/graph/hc_1_hc_2_k${K}
 
+  rm  ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa.glue*
+
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
@@ -410,7 +412,7 @@ if [[ -z "${SKIP_CLASSIFICATION}" ]]; then
         ${DATA_DIR}/graph/hc_1_hc_2_k${K}.abundance \
         ${RESULTS_DIR}/seq_consensium.txt \
         ${RESULTS_DIR}/analysis_core \
-        ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt
+        ${RESULTS_DIR}/induced_cores_subgraph/connecting_paths.txt
 
 
 

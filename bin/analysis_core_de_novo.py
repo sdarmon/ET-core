@@ -141,17 +141,12 @@ with open(Arg[5],'r') as f :
         if len(line) < 2:
             break
         L=line[:-1].split('\t')
-        id=int(L[0])
-        comps=L[2].split(',')
-        seen=set()
-        #ids_save[id]=(L[1],L[2])
-        for el in comps:
-            if el not in seen:
-                for el2 in seen:
-                    adjacent[int(el)].append((int(el2),id))
-                    adjacent[int(el2)].append((int(el),id))
-                    total_deg+=2
-                seen.add(el)
+        a=int(L[0])
+        b=int(L[1])
+        seq=L[2]
+        adjacent[a].append(b)
+        adjacent[b].append(a)
+        total_deg+=2
 
 mean_deg=total_deg/nb_comps
 
@@ -159,7 +154,7 @@ max_neighboor=[[] for _ in range(nb_comps)]
 max_connection=[0 for _ in range(nb_comps)]
 for i in range(nb_comps):
     nb_seen = {}
-    for (neigh,_) in adjacent[i]:
+    for neigh in adjacent[i]:
         if neigh not in nb_seen:
             nb_seen[neigh] = 1
         else:
@@ -251,8 +246,8 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
                         if max_connection[i] > mean_deg/2 :
                             score+=1
                             link= max_connection[i]
-                            neigh = adjacent[i][0]
-                            neigh_text=f"{adjacent[i][0][0]}:{100*max_connection[i]/len(adjacent[i]):.1f}%"
+                            neigh = adjacent[i]
+                            neigh_text=f"{max_neighboor[i][0]}:{100*max_connection[i]/len(adjacent[i]):.1f}%"
 
                         #Update the score
                         score_texte=str(score)
