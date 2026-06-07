@@ -94,7 +94,7 @@ if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} || -n ${VALID
 
     echo "Optional arguments : "
     echo -e "\t -p: number of threads to use (default: 8)"
-    echo -e "\t -k: k-mer size to use for the DGB construction (default: 41)"
+    echo -e "\t -k: k-mer size to use for the DBG construction (default: 41)"
     echo -e "\t -d: extended degree distance to use for the weighting of the nodes (default: 10)"
     echo -e "\t -h: hamming distance to use for the weighting of the nodes (default: 2)"
     echo -e "\t -t: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)"
@@ -239,7 +239,7 @@ if [[ -z "${SKIP_HC}" ]]; then
 fi
 if [[ -z "${SKIP_BCALM}" ]]; then
     ##Compute the DGB with bcalm
-    echo "DGB with bcalm ..."
+    echo "DBG with bcalm ..."
     #ls -1 ${DATA_DIR}/hc_1.fa ${DATA_DIR}/hc_2.fa > ${DATA_DIR}/list_reads
     echo "hc_1.fa.gz" > ${DATA_DIR}/list_reads
     echo "hc_2.fa.gz" >> ${DATA_DIR}/list_reads
@@ -276,7 +276,7 @@ awk '/^>/ {ab = substr($4, 6); print ab}' ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unit
   end=`date +%s`
   elapsed=`expr $end - $begin`
   begin=`date +%s`
-  echo -e "DGB time (in seconds): $elapsed \n"
+  echo -e "DBG time (in seconds): $elapsed \n"
 
   ##Filter the low abundance percent unitigs
   echo "Filtering the low abundance percent unitigs ..."

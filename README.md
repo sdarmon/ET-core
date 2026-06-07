@@ -72,6 +72,24 @@ Some additional parameters can be specified:
 
 ### Output and files structure
 
+The central file is `extended_t_cores_summary.tsv`. It contains the summary of every the extended-t-cores with the 
+following columns:
+
+*The first four headers characterize the cores. The other four headers provide additional important metrics for the cores.*
+
+| Column Header | Description | Format/Units |
+| :--- | :--- | :--- |
+| **`Id`** | Unique identifier for the extended $t$-core, sorted by decreasing `Max_degree`. | Integer |
+| **`Representative`** | Most abundant sequence of the extended $t$-core. | DNA string |
+| **`Repeat_type`** | Repeat classification based on the DNA sequences of the extended $t$-core: Microsatellite (% covered), A/T or C/G stretch $(X)^{\geq 5}$. Other cases are labeled as Potential TE. | String |
+| **`TE_Score`** | Confidence score for Transposable Element classification. | `0` (Low) – `3` (High) |
+| **`Max_degree`** | Highest extended degree for a node within the core. | Integer |
+| **`Max_abundance`** | Highest number of reads mapped to a node of the extended $t$-core. | Float |
+| **`Core_connectivity`** | Number of paths connecting other extended $t$-cores to that core. | Integer |
+| **`Primary_neighbour`** | ID of the neighbour having the highest number of distinct paths connecting both cores, and percentage of such connecting paths. | ID:Percentage (%) |
+
+
+
 The output directory will contain the following files and directories:
 
     OUTDIR/
@@ -98,128 +116,3 @@ The output directory will contain the following files and directories:
     ├── requirements.txt
     ├── venv/
     └── bin/
-
-### Binary version (without dependencies -> soon be replaced with a docker image)
-
-```
-bash Extended-t-core_binaries.sh \
-    --reads1 reads_1.fastq[.gz] \
-    --reads2 reads_2.fastq[.gz] \
-    -O output_dir
-```
-
-## Transposable Elements analysis
-
-### Dependency and versions used
-
-- **DFAM database** version 38 
-- **Bowtie2** version 2.2.4
-- **Samtools** version 1.9
-- **TECount** version 1.0.0 (from the **TEtools** package)
-- **featureCounts** version 2.1.1
-- **Bedtools** version 2.31.1
-
-### Code example (with dependencies built)
-
-Will be released soon.
-
-### Binary version (without dependencies -> soon be replaced with a docker image)
-
-```
-bash te_analysis.sh \
-    --te-cons dfam_te_consensus.fa \
-    -O output_dir
-```
-where `--te-cons` is the path to the TE consensus sequences in FASTA format, and `-O` is the output directory.
-Some additional parameters can be specified, such as the number of threads to use (`-p`) and the k-mer size for the de Bruijn graph construction (`-k`). `-O`, `-p` and `-k` should be the same as the ones used for the de novo extended-t-core computing.
-
-
-### Quick recap of the steps
-
-1. Build the TE library from the **DFAM** database for **Bowtie2** alignment.
-2. Align the reads to the TE library using **Bowtie2** and keep only the primary alignments.
-3. Align every extended-t-core to the TE library using **Bowtie2** and keep only the primary alignments.
-4. Annotate the extended-t-cores with the TE family they align to.
-5. Align all the unitigs to the TE library using **Bowtie2** and keep only the primary alignments.
-6. Annotate all the unitigs with the TE family they align to.
-7. Compute the TE count for each TE family using **TECount**.
-8. Compute the TE not covered by the extended-t-cores.
-9. Save ROC curves for the TE prediction by the extended-t-cores.
-
-### Output and files structure
-
-The output directory will have the following additional files and directories:
-
-    OUTDIR/
-    ├── results/
-    │   ├── TE_coverage_count_ab_filtered.txt       
-    │   ├── output_roc_curves.png                   
-    │   │
-    │   ├── alignment/
-    │   │   ├── READS.sam 
-    │   │   ├── READS_sorted.bam (sorted and indexed, only primary)
-    │   │   └── bowtie2_output_reads.txt
-    │   │
-    │   └── cores/
-    │       ├── alignment_all_unitigs.bam
-    │       ├── all_unitigs_annotated.nodes
-    │       ├── extended_t_cores_${i}_annotated.nodes
-    │       └── alignment_${i}/
-    │           ├── extended_t_cores_${i}_aligned.sam
-    │           └──extended_t_cores_${i}_aligned.bam (sorted and indexed, only primary)
-    └── data/
-        └── count_TE_TECOUNT.txt
-
-
-### Scripts to extract the TE consensus from the DFAM database
-
-#### Quering of the DFAM database online
-
-The DFAM database can be queried online to extract the TE consensus sequences for a given species 
-by going to the following link : https://dfam.org/browse?classification=root%25253BInterspersed_Repeat%25253BTransposable_Element&clade_ancestors=true&clade_descendants=true
-
-Then, you just need to specify the species name in the **Taxon** field, 
-to get the list of its TE consensus sequences. One can download the results
-as a fasta file, using the **FASTA** bouton at the bottom of the page.
-
-With this link, the following options should be checked :
-- Classification : *Interspersed_Repeat;Transposable_Element*
-- Ancestors : *Checked*
-- Descendants : *Checked*
-
-#### Quering of the DFAM database with Curl API
-
-The DFAM database can be queried online to extract the TE consensus sequences for a given species. 
-This can be done using curl command. More details on the API can be found here : https://dfam.org/releases/Dfam_3.8/apidocs/
-
-
-
-#### Local extraction of the TE consensus from the DFAM database
-
-The DFAM database can be downloaded and queried locally to extract the TE consensus sequences for any given species.
-
-Download the partitions of the **Dfam** database corresponding the studied
-species (read thier README) into a `${LIBRARY_DIR}` : https://www.dfam.org/releases/current/families/FamDB/
-
-Get **FamDB** from their GitHub : https://github.com/Dfam-consortium/FamDB
-
-Install the Python3 package **h5py** or activate the venv (`venv/bin/activate`) of the
-extended-t-core project.
-
-```
-  famdb.py -i ${LIBRARY_DIR}/ families \
-  --include-class-in-name \
-  --curated \
-  --descendants \
-  --ancestors \
-  "${SPE_NAME}" --format fasta_name
-```
-Where Parameters :
-- `-i` : path to the famdb installation
-- `families` : command to extract the families
-- `--include-class-in-name` : include the class of the TE in the name
-- `--curated` : only curated families
-- `--descendants` : include descendants of the specified species
-- `--ancestors` : include ancestors of the specified species
-- `${SPE_NAME}` : species name to specify (e.g. "Mus musculus")
-- `--format fasta_name` : output format with fasta header containing the TE name and description
