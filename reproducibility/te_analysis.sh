@@ -94,7 +94,7 @@ if [[ -z "${SKIP_TE_LIBRARIES}" ]]; then
 #   | sed 's/^>/>dfam_/g' > ${DFAM_FA}
 
   #Build Bowtie genome (here that's the TEs)
-  ${BIN_DIR}/bowtie2/bowtie2-build ${DFAM_FA} TE_Dfam_${SPE}
+  bowtie2-build ${DFAM_FA} TE_Dfam_${SPE}
 
 
    sed 's/\t/_/g; s/ /_/g; s/\[/_/g; s/\]/_/g ; s/:/_/g; s/,/_/g ; s/\//_/g; s/(/_/g; s/)/_/g' \
@@ -130,7 +130,7 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
   # -S : output SAM file
   # -1 : first read file
   # -2 : second read file paired with the first
-  ${BIN_DIR}/bowtie2/bowtie2 --wrapper basic-0 \
+  bowtie2 --wrapper basic-0 \
       -a \
       -q \
       -p 8 \
@@ -148,15 +148,15 @@ if [[ -z "${SKIP_BOWTIE_READS}" ]]; then
   #-F 256 : filter out alignments with flag 256 (not primary alignments).
   # Bowtie2 randomly assigns primary alignments when multiple alignments have the same score
   # Keeping only primary alignments avoid counting multiple times the same read in downstream analyses
-  ${BIN_DIR}/samtools view -bS -F 256 \
+  samtools view -bS -F 256 \
       ${RESULTS_DIR}/alignment/READS.sam \
       > ${RESULTS_DIR}/alignment/READS.bam
 
   rm ${RESULTS_DIR}/alignment/READS.sam
-  ${BIN_DIR}/samtools  sort \
+  samtools  sort \
       ${RESULTS_DIR}/alignment/READS.bam \
       -o ${RESULTS_DIR}/alignment/READS_sorted.bam
-  ${BIN_DIR}/samtools  index \
+  samtools  index \
       ${RESULTS_DIR}/alignment/READS_sorted.bam
 
 
@@ -203,7 +203,7 @@ if [[ -z "${SKIP_BOWTIE_CORES}" ]]; then
         ${BASE_DIR}/core${i}.fa \
         0
     ## -f : input files are in fasta format
-      ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
+      bowtie2 --wrapper basic-0 \
           -a \
           -f \
           -p 1 \
@@ -216,7 +216,7 @@ if [[ -z "${SKIP_BOWTIE_CORES}" ]]; then
           -U ${BASE_DIR}/core${i}.fa &> ${BASE_DIR}/alignment_${i}/bowtie2_output.txt
 
 
-      ${BIN_DIR}/samtools view -bS  \
+      samtools view -bS  \
           ${BASE_DIR}/alignment_${i}/core${i}.sam \
           > ${BASE_DIR}/alignment_${i}/core${i}.bam
 
@@ -258,7 +258,7 @@ if [[ -z "${SKIP_BOWTIE_UNITIGS}" ]]; then
   python3 ${BIN_DIR}/reads_to_align.py ${BASE_DIR}/all_unitigs.txt ${BASE_DIR}/all_unitigs.fa 0
 
   ###Bowtie2 alignment of the unitigs to the Dfam TE library
-  ${BIN_DIR}/bowtie2/bowtie2 --wrapper basic-0 \
+  bowtie2 --wrapper basic-0 \
       -a \
       -f \
       -p 8 \
@@ -269,7 +269,7 @@ if [[ -z "${SKIP_BOWTIE_UNITIGS}" ]]; then
       -X 500 -S ${BASE_DIR}/alignment_unitigs.sam \
       -U ${BASE_DIR}/all_unitigs.fa &> ${BASE_DIR}/bowtie2_output_unitigs.txt
 
-  ${BIN_DIR}/samtools  view -bS \
+  samtools  view -bS \
       ${BASE_DIR}/alignment_unitigs.sam \
       > ${BASE_DIR}/alignment_unitigs.bam
 
@@ -386,12 +386,12 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
     > ${DFAM_FA}.bed
 
     #Convert the sorted bam to bed format
-    ${BIN_DIR}/bedtools  bamtobed \
+    bedtools  bamtobed \
         -i ${RESULTS_DIR}/alignment/READS_sorted.bam | sort -k1,1 -k2,2n \
         > ${RESULTS_DIR}/alignment/READS.sorted.bed
 
     #coreute the coverage (-sorted option should work but here it raises an error)
-    ${BIN_DIR}/bedtools coverage \
+    bedtools coverage \
         -a ${DFAM_FA}.bed \
         -b ${RESULTS_DIR}/alignment/READS.sorted.bed \
         -nonamecheck \
@@ -606,7 +606,7 @@ exit 0
     #Getting the sequences from ${RESULTS_DIR}/other_cores_list_100.txt
     awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}'  ${RESULTS_DIR}/other_cores_list_100.txt > ${BASE_DIR}/core_potential_TE_100.fa
     #Align the consensus sequences to the Dfam TE library with bowtie2
-    ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
+    bowtie2 --wrapper basic-0 \
       -a \
       -f \
       -p 8 \
@@ -618,7 +618,7 @@ exit 0
       -U ${BASE_DIR}/core_potential_TE_100.fa &> ${BASE_DIR}/bowtie2_output_consensus_100.txt
 
 
-    ${BIN_DIR}/samtools view -bS \
+    samtools view -bS \
       ${BASE_DIR}/alignment_consensus_100.sam \
       > ${BASE_DIR}/alignment_consensus_100.bam
 
@@ -655,7 +655,7 @@ exit 0
         #Getting the sequences from ${RESULTS_DIR}/all_cores_list.txt
         awk 'BEGIN{i=1} NR>1 {print ">SEQ_"i"_"$1"_"$3"\n"$2; i=i+1}'  ${RESULTS_DIR}/all_cores_list.txt > ${BASE_DIR}/core_all.fa
         #Align the consensus sequences to the Dfam TE library with bowtie2
-        ${BIN_DIR}/bowtie2/bowtie2-align-s --wrapper basic-0 \
+        bowtie2 --wrapper basic-0 \
           -a \
           -f \
           -p 8 \
@@ -666,7 +666,7 @@ exit 0
           -X 500 -S ${BASE_DIR}/alignment_consensus_all.sam \
           -U ${BASE_DIR}/core_all.fa &> ${BASE_DIR}/bowtie2_output_consensus_all.txt
 
-    ${BIN_DIR}/samtools view -bS \
+    samtools view -bS \
       ${BASE_DIR}/alignment_consensus_all.sam \
       > ${BASE_DIR}/alignment_consensus_all.bam
 
