@@ -25,6 +25,15 @@ bin/curve.py
 #Toy example
 toy_example*
 
+#Debugging executable
 .idea/
 trash*
 bin/TEcount.ini
+bin/TEcount.py
+bin/bcalm
+bin/bedtools
+bin/bowtie2/
+bin/fastp
+bin/featureCounts
+bin/samtools
+
