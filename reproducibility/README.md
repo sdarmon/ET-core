@@ -8,6 +8,14 @@ All data are available in the `Mus_musculus_small_example` directory of this rep
 The 100,000 RNA-seq reads are sampled from the SRA project ERR2680378. FastP was used on those reads for detecting and 
 removing adapters, and for removing polyX tails.
 
+### Dependencies and versions used
+
+- **Python** version 3.11.2 (with **pip** v. 23.0.1 that will install the packages stored in the _requirements.txt_ file)
+- **Cargo** version 1.75.0 (for Rust compilation)
+- **gcc** version 12.2.0 (for C++ compilation)
+- **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
+- **Python3 venv** 
+
 ### ET-core execution
 
 First, we run the `extended-t-core.sh` script on the reads to compute the extended-t-cores. The option `--no-fastp` is

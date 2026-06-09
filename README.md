@@ -26,6 +26,7 @@ such as the one from the **DFAM** database (see last section for TEs extraction)
 ### Dependencies and versions used (for optimal execution)
 
 - **Python** version 3.11.2 (with **pip** v. 23.0.1 that will install the packages stored in the _requirements.txt_ file)
+- **Python3 venv** (for the Python dependencies)
 - **Cargo** version 1.75.0 (for Rust compilation)
 - **gcc** version 12.2.0 (for C++ compilation)
 - **FastP** version 0.23.4
