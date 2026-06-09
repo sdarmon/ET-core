@@ -62,7 +62,7 @@ DATA_DIR="${OUTDIR}/data"
 RESULTS_DIR="${OUTDIR}/results"
 BASE_DIR="${RESULTS_DIR}/cores"
 WORK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR="${WORK_DIR}/bin"
+BIN_DIR="${WORK_DIR}/../bin"
 
 
 #endregion
@@ -540,8 +540,8 @@ if [[ -z "${SKIP_CONS_SEQ_ANA}" ]]; then
   #awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes> ${RESULTS_DIR}/cores/core${i}_annotated_detailled.nodes
   
   #Using TE sampling
-  awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes> ${RESULTS_DIR}/cores/core${i}_annotated_detailled.nodes
-  awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes | awk 'BEGIN{FS=OFS="\t"} {n=split($6,a,"; "); res=""; delete v; for(i=1;i<=n;i++){sub(/_[0-9]+$/,"",a[i]); if(!v[a[i]]++){res=(res==""?a[i]:res "; " a[i])}} $6=res; print $0}' > ${RESULTS_DIR}/cores/core${i}_annotated.nodes;
+  #awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes> ${RESULTS_DIR}/cores/core${i}_annotated_detailled.nodes
+  #awk 'NR==FNR {a[$1]; next} $1 in a ' ${RESULTS_DIR}/cores/core${i}.txt FS="\t" ${RESULTS_DIR}/cores/all_unitigs_annotated.nodes | awk 'BEGIN{FS=OFS="\t"} {n=split($6,a,"; "); res=""; delete v; for(i=1;i<=n;i++){sub(/_[0-9]+$/,"",a[i]); if(!v[a[i]]++){res=(res==""?a[i]:res "; " a[i])}} $6=res; print $0}' > ${RESULTS_DIR}/cores/core${i}_annotated.nodes;
   awk '$6!="*" {print $6}' FS="\t" ${RESULTS_DIR}/cores/core${i}_annotated.nodes | sed -e 's/; /\n/g' | sort -u >> ${RESULTS_DIR}/TE_in_cores.txt
   done
   
