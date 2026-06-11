@@ -3,10 +3,8 @@
 #(repeated sequences of 1 to 6 nucleotides) in the sequences; and the annotated genes that are intersecting
 # with the sequences.
 import sys
-import gc
 import re
 from collections import defaultdict
-from fontTools.misc.py23 import range
 from numpy.ma.core import sum
 
 Arg = sys.argv[:]

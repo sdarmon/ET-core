@@ -19,18 +19,19 @@ this repository.
     * pysam (version 0.23.0)
 - **Cargo** version 1.75.0 (for Rust compilation)
 - **gcc** version 12.2.0 (for C++ compilation)
+- **libomp-dev** version 1:18.0 (for C++ parallelisation)
 - **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
 
 ### ET-core execution
 
 In the remaining of this reproducibility example, we will compute and analyse the extended-t-cores of the 
-100,000 reads sample. we run the `extended-t-core.sh` script on the reads to compute the extended-t-cores. 
+100,000 reads sample. we run the `ET-core.sh` script on the reads to compute the extended-t-cores. 
 The option `--no-fastp` is used here because the reads are already curated with FastP. 
 To reproduce the results of the article on the full dataset,
 you should not use the `--no-fastp` option to automatically run FastP on the reads. 
 
 ```
-bash extended-t-core.sh \
+bash ET-core.sh \
     --reads1 Mus_musculus_small_example/R1.fastp.gz \
     --reads2 Mus_musculus_small_example/R2.fastp.gz \
     -O Mus_musculus_small_example/ \
@@ -94,9 +95,10 @@ count for this family.
 ### Te analysis execution 
 
 ```
+cd reproducibility
 bash te_analysis.sh \
-    --te-cons dfam_mus_march2026.fa \
-    -O Mus_musculus_small_example/
+    --te-cons ../Mus_musculus_small_example/dfam_mus_march2026.fa \
+    -O ../Mus_musculus_small_example/
 ```
 
 ### Quick recap of the steps of this code
@@ -107,7 +109,7 @@ bash te_analysis.sh \
 4. Annotate the extended-t-cores with the TE family they align to.
 5. Align all the unitigs to the TE library using **Bowtie2** and keep only the primary alignments.
 6. Annotate all the unitigs with the TE family they align to.
-7. Compute the TE count for each TE family using **TECount**.
+7. Compute the TE count for each TE family.
 8. Compute the TE not covered by the extended-t-cores.
 9. Save ROC curves for the TE prediction by the extended-t-cores.
 10. Save the summary of the extended-t-cores with their TE annotation and TE count in the `extended_t_cores_summary_SOLUTION.tsv` file.
@@ -174,7 +176,6 @@ as a fasta file, using the **FASTA** bouton at the bottom of the page.
 With this link, the following options should be checked :
 - Classification : *Interspersed_Repeat;Transposable_Element*
 - Ancestors : *Checked*
-- Descendants : *Checked*
 
 ### Quering of the DFAM database with Curl API
 
@@ -199,7 +200,6 @@ extended-t-core project.
   famdb.py -i ${LIBRARY_DIR}/ families \
   --include-class-in-name \
   --curated \
-  --descendants \
   --ancestors \
   "${SPE_NAME}" --format fasta_name
 ```
@@ -208,7 +208,6 @@ Where Parameters :
 - `families` : command to extract the families
 - `--include-class-in-name` : include the class of the TE in the name
 - `--curated` : only curated families
-- `--descendants` : include descendants of the specified species
 - `--ancestors` : include ancestors of the specified species
 - `${SPE_NAME}` : species name to specify (e.g. "Mus musculus")
 - `--format fasta_name` : output format with fasta header containing the TE name and description

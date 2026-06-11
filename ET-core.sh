@@ -136,7 +136,7 @@ mkdir -p $BASE_DIR
 mkdir -p $DATA_DIR/graph
 mkdir -p ${RESULTS_DIR}/induced_cores_subgraph
 
-if [[ -z "${SKIP_BUILD_RUST}" ]]; then
+if [[ -n "${REBUILD}" || ! -f "${BIN_DIR}/graph.exe"  ]]; then
   ##Build the bin for the gene_finder function
   echo "Building the bin for the gene_finder function..."
   cargo build --release --manifest-path ${BIN_DIR}/gene_finder_de_novo/Cargo.toml

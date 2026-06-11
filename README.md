@@ -1,4 +1,4 @@
-# Extended-t-core
+# ET-core
 
 This repository contains the code to *de novo* compute the **extended-t-cores** of a 
 compacted de Bruijn graph built from short reads RNA-seq.
@@ -10,36 +10,78 @@ Bruijn graph where all the unitigs have a high **extended degree**, a generaliza
 of the degree of a graph node that counts the number of neighbors at distance at
 most `d` nucleotides (by default, `d=10`).
 
+You can execute **ET-core** directly from a docker image or by cloning this git (will require some dependencies). 
+Refer to corresponding section.
+
+## Docker execution
+
+First check if docker is installed on your machine.
+
+If `docker ps` raise an error, you should add `sudo` to the following docker commands.
+
+### Download the image
+```
+docker pull sdarmon/et-core:1.0
+```
+### Execution of TE-core using docker
+```
+docker run --rm \
+    -v /absolute/path/to/your/reads/directory:/data \
+    -v /absolute/path/to/your/output/directory:/output \
+    sdarmon/te-core:1.0 \
+    --reads1 /data/reads_1.fastq[.gz] \
+    --reads2 /data/reads_2.fastq[.gz] \
+    -O /output
+```
+
+Where `reads_1.fastq[.gz]` and `reads_2.fastq[.gz]` are the paired-end reads, possibly `.gz`.
+
+Some additional parameters can be specified:
+- `-p`: number of threads to use (default: 8)
+- `-k`: k-mer size to use for the DGB construction (default: 41)
+- `-d`: extended degree distance to use for the weighting of the nodes (default: 10)
+- `-h`: hamming distance to use for the weighting of the nodes (default: 2)
+- `-t`: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)
+- `-a`: Abundance minimal for keeping the k-mers (default: 2)
+- `--max-memory`: max memory to use (in MBytes, default: 14000)
+- `--no-fastp` : do not run fastp on the reads (not recommended if the reads are not curated)
+- `--sample` : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
 
 
-From these extended-t-cores, we can identify inexact repeats of the transcriptome,
-and we can propose _de novo_ Transposable Elements (TEs) candidates.
+## Git clone execution
 
-A second script is available to compare the extended-t-cores to a TE consensus library,
-such as the one from the **DFAM** database (see last section for TEs extraction).
+First, clone the git project:
 
-
-## *De novo* Extended-t-cores computing
-
-<!-- Currently, one can either directly use the binary version or recompile all the code and dependancies for optimal execution (recommanded).-->
+```
+git clone https://github.com/sdarmon/ET-core
+cd ET-core
+```
 
 ### Dependencies and versions used (for optimal execution)
+
+Check or install those following dependencies.
 
 - **Python** version 3.11.2, with **pip** (version 23.0.1) to install :
     * numpy (version 2.3.1)
     * pysam (version 0.23.0)
 - **Cargo** version 1.75.0 (for Rust compilation)
 - **gcc** version 12.2.0 (for C++ compilation)
-- **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
+- **libomp-dev** version 1:18.0 (for C++ parallelisation)
+- **BCALM 2** version 2.2.3, git commit cf371b6 (include gatb-core version 1.4.2)
 - **Optional : FastP** version 0.23.4 (by default, run FastP on the reads. Use the `--no-fastp` option if you do NOT want to use FastP)
 - **Optional : seqtk** version 1.4-r122 (for sampling the reads using the `--sample` option)
 
 
+For each `<package>` ou `<xyz>` python3 package, you can use the following commands :
+```
+sudo apt install <package>
+sudo apt install python3-<xyz> for `<xyz>` python3 package
+```
 ### Code example (with dependencies built)
 
 To execute the code, simply run the following command in the terminal:
 ```
-bash extended-t-core.sh \
+bash ET-core.sh \
     --reads1 reads_1.fastq[.gz] \
     --reads2 reads_2.fastq[.gz] \
     -O output_dir
