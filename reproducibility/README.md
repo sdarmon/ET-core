@@ -1,12 +1,16 @@
 
 ## Transposable Elements analysis - Reproducibility
 
+To reproduce the results of the article on the *Mus musculus* dataset, you can download the paired-end reads from the 
+SRA project ERR2680378, and the TE consensus sequences from the **DFAM** database (see last section for TEs extraction 
+explanation).
 
-To present a small reproducibility example, we will use RNA-seq reads from a *Mus musculus* dataset and the TE consensus
-sequences from the **DFAM** database (downloaded on march 2026). Te consensus extraction is explained in the last section.
-All data are available in the `Mus_musculus_small_example` directory of this repository. 
-The 100,000 RNA-seq reads are sampled from the SRA project ERR2680378. FastP was used on those reads for detecting and 
-removing adapters, and for removing polyX tails.
+
+Here, we present a small reproducibility example, based on a subset of the full dataset of the SRA project ERR2680378.
+In this example, we sampled 100,000 RNA-seq pair-ended reads and we took the TE consensus sequences from the **DFAM**
+database (downloaded on march 2026).  astP was already used on those sampled reads for detecting and removing adapters,
+and for removing polyX tails. All of those files are available in the `Mus_musculus_small_example` directory of 
+this repository.
 
 ### Dependencies and versions used
 
@@ -18,8 +22,11 @@ removing adapters, and for removing polyX tails.
 
 ### ET-core execution
 
-First, we run the `extended-t-core.sh` script on the reads to compute the extended-t-cores. The option `--no-fastp` is
-used here because the reads are already curated with FastP. 
+In the remaining of this reproducibility example, we will compute and analyse the extended-t-cores of the 
+100,000 reads sample. we run the `extended-t-core.sh` script on the reads to compute the extended-t-cores. 
+The option `--no-fastp` is used here because the reads are already curated with FastP. 
+To reproduce the results of the article on the full dataset,
+you should not use the `--no-fastp` option to automatically run FastP on the reads. 
 
 ```
 bash extended-t-core.sh \
@@ -28,6 +35,8 @@ bash extended-t-core.sh \
     -O Mus_musculus_small_example/ \
     --no-fastp
 ```
+
+
 In the end, 12 cores should be found and summarised within the `Mus_musculus_small_example/results/extended_t_cores_summary.tsv` file.
 It should look like this (order of cores may differ and unitigs might be reverse complemented) :
 
@@ -65,7 +74,10 @@ Here is such alignment using **Seaview** :
 
 In order to reproduce our validation of the TE prediction, we added an additional script `reproducibility/te_analysis.sh`
 that will align the reads and the unitigs on the TE consensus. This script will also compute the TE count for each TE 
-family using **TECount**, and save the ROC curves for the TE prediction by the extended-t-cores.
+family, and save the ROC curves for the TE prediction by the extended-t-cores. More importantly, it will create the
+file `extended_t_cores_summary_SOLUTION.tsv` (in the  `Mus_musculus_small_example/results/` directory) which contains 
+the summary of the extended-t-cores, with two additional columns : the TE family they align to (if any) and the TE 
+count for this family.
 
 ### Additional dependency and versions used 
 
@@ -76,6 +88,7 @@ family using **TECount**, and save the ROC curves for the TE prediction by the e
 - **Bedtools** version 2.31.1
 
 ### Te analysis execution 
+
 ```
 bash te_analysis.sh \
     --te-cons dfam_mus_march2026.fa \
@@ -96,9 +109,6 @@ bash te_analysis.sh \
 10. Save the summary of the extended-t-cores with their TE annotation and TE count in the `extended_t_cores_summary_SOLUTION.tsv` file.
 
 ### Output and files structure
-
-The central file is `extended_t_cores_summary_SOLUTION.tsv`. It contains the summary of the extended-t-cores, with two 
-additional columns : the TE family they align to (if any) and the TE count for this family. 
 
 The output directory will have the following additional files and directories:
 
