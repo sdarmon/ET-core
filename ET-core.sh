@@ -45,6 +45,10 @@ while [[ $# -gt 0 ]]; do
             A="$2"
             shift 2
             ;;
+        -v)
+            V="T"
+            shift 1
+            ;;
         --reads1)
             READS_1="$2"
             shift 2
@@ -82,6 +86,10 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ -n "${V}" ]]; then
+    echo "Version: 1.0.0"
+    exit 0
+fi
 #If READS_1, READS_2 or OUTDIR are not set, exit
 if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} || -n ${VALIDE} ]]; then
     echo -e "Usage : $0  \n\t --reads1 <reads1.fastq[.gz]> \n\t --reads2 <reads2.fastq[.gz]> \n\t -O <output_dir> \n\t [-p <threads>] \n\t [-k <k-mer size>] \n\t [-d <extended degree distance>] \n\t [-h <hamming distance>] \n\t [-t <threshold>] \n\t [-a <abundance min>] \n\t [--max-memory <MB>]  \n\t [--no-fastp] \n\t [--sample <sample size | sample frac>]  \n\t [--help] \n"
@@ -105,6 +113,7 @@ if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} || -n ${VALID
     echo -e "\t --no-fastp : do not run fastp on the reads (not recommended if the reads are not curated)"
     echo -e "\t --sample : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))"
     echo -e "\t --help: display this help message and exit \n"
+    echo -e "\t -v: display the version of the script and exit \n"
     exit 1
 fi
 

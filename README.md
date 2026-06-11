@@ -86,7 +86,8 @@ bash ET-core.sh \
     --reads2 reads_2.fastq[.gz] \
     -O output_dir
 ```
-Where `--reads1` and `--reads2` are the paths to the paired-end reads, possibly `.gz`, and `-O` is the output directory.
+Where `reads_1.fastq[.gz]` and `reads_2.fastq[.gz]` are the paths to the paired-end reads, possibly `.gz`, and 
+where `output_dir` is the output directory.
 
 Some additional parameters can be specified:
 - `-p`: number of threads to use (default: 8)
