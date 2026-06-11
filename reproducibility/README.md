@@ -14,11 +14,12 @@ this repository.
 
 ### Dependencies and versions used
 
-- **Python** version 3.11.2 (with **pip** v. 23.0.1 that will install the packages stored in the _requirements.txt_ file)
+- **Python** version 3.11.2, with **pip** v. 23.0.1 to install :
+    * numpy (version 2.3.1)
+    * pysam (version 0.23.0)
 - **Cargo** version 1.75.0 (for Rust compilation)
 - **gcc** version 12.2.0 (for C++ compilation)
 - **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
-- **Python3 venv** 
 
 ### ET-core execution
 
@@ -81,6 +82,9 @@ count for this family.
 
 ### Additional dependency and versions used 
 
+- **Python** version 3.11.2, with **pip** v. 23.0.1 to install :
+    * h5py (version 3.13, for using the TE library)
+    * matplotlib (version 3.10.7, for plotting the ROC curve)
 - **Bowtie2** version 2.2.4
 - **Samtools** version 1.9
 - **TECount** version 1.0.0 (from the **TEtools** package)

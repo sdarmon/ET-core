@@ -155,10 +155,11 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
   g++ -O3 -g -fopenmp ${BIN_DIR}/graph.cpp ${BIN_DIR}/ponderation.cpp -o ${BIN_DIR}/graph.exe
   g++ -O3 -g ${BIN_DIR}/graph.cpp ${BIN_DIR}/agglo.cpp -o ${BIN_DIR}/agglo.exe
 
-  python3 -m venv venv
-  source ${WORK_DIR}/venv/bin/activate
-  pip install -r requirements.txt
-  deactivate
+  #Removng default venv
+  #python3 -m venv venv
+  #source ${WORK_DIR}/venv/bin/activate
+  #pip install -r requirements.txt
+  #deactivate
 
   end=`date +%s`
   elapsed=`expr $end - $begin`
@@ -166,7 +167,7 @@ if [[ -z "${SKIP_BUILD_RUST}" ]]; then
   echo -e "Build time (in seconds): $elapsed \n"
 fi
 
-  source ${WORK_DIR}/venv/bin/activate
+  #source ${WORK_DIR}/venv/bin/activate
 
 #Sample the reads if the sample size is specified, and write the sampled reads in ${READS_1}.sampled and ${READS_2}.sampled
 if [[ -n "${S}" ]]; then

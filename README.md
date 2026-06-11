@@ -25,12 +25,13 @@ such as the one from the **DFAM** database (see last section for TEs extraction)
 
 ### Dependencies and versions used (for optimal execution)
 
-- **Python** version 3.11.2 (with **pip** v. 23.0.1 that will install the packages stored in the _requirements.txt_ file)
-- **Python3 venv** (for the Python dependencies)
+- **Python** version 3.11.2, with **pip** (version 23.0.1) to install :
+    * numpy (version 2.3.1)
+    * pysam (version 0.23.0)
 - **Cargo** version 1.75.0 (for Rust compilation)
 - **gcc** version 12.2.0 (for C++ compilation)
-- **FastP** version 0.23.4
 - **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
+- **Optional : FastP** version 0.23.4 (by default, run FastP on the reads. Use the `--no-fastp` option if you do NOT want to use FastP)
 - **Optional : seqtk** version 1.4-r122 (for sampling the reads using the `--sample` option)
 
 

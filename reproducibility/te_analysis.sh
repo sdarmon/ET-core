@@ -67,7 +67,7 @@ BIN_DIR="${WORK_DIR}/../bin"
 
 #endregion
 
-source venv/bin/activate
+#source venv/bin/activate
 
 #region BUILD TE LIBRARY AND BINARIES
 if [[ -z "${SKIP_TE_LIBRARIES}" ]]; then
