@@ -1,19 +1,20 @@
 # ET-core
 
-This repository contains the code to *de novo* compute the **extended-t-cores** of a 
-compacted de Bruijn graph built from short reads RNA-seq.
+This repository contains the code for **ET-core**, a tool designed for the _de novo_ computation of **extended-t-cores** from 
+compacted de Bruijn graphs built using short-read RNA-seq data.
 
 The **extended-t-cores** conceptually correspond to the dense regions
 of the compacted de Bruijn graph due to the presence of inexact repeated sequences
 in the transcriptome. There are defined as the maximal subgraphs of the compacted de
-Bruijn graph where all the unitigs have a high **extended degree**, a generalization
-of the degree of a graph node that counts the number of neighbors at distance at
-most `d` nucleotides (by default, `d=10`).
+Bruijn graph where all the unitigs have a high **extended degree**. The **extended degree** of a unitig is 
+a generalization of the degree of a graph node. It represents the number of locally distinct transcripts containing that node.
 
-You can execute **ET-core** directly from a docker image or by cloning this git (will require some dependencies). 
-Refer to corresponding section.
+There are two ways to run **ET-core**: using the provided **Docker image** or by **cloning this repository**. 
+While the source code version requires installing dependencies, it includes a small example dataset and scripts for
+reproducibility. 
+Please refer to the relevant section below based on your choice.
 
-## Docker execution
+## ET-core from a docker image
 
 First check if docker is installed on your machine.
 
@@ -48,7 +49,7 @@ Some additional parameters can be specified:
 - `--sample` : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
 
 
-## Git clone execution
+## ET-core from the Git clone
 
 First, clone the git project:
 
