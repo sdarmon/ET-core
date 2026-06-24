@@ -72,7 +72,7 @@ BIN_DIR="${WORK_DIR}/../bin"
 #region BUILD TE LIBRARY AND BINARIES
 if [[ -z "${SKIP_TE_LIBRARIES}" ]]; then
   # Extraction des TEs de la base de données Dfam
-  echo "Extraction of the TEs from Dfam ..."
+  echo "Construction TEs librairies ..."
 
 #  Parameters :
 #  -i : path to the famdb installation
@@ -101,7 +101,7 @@ if [[ -z "${SKIP_TE_LIBRARIES}" ]]; then
    ${DFAM_FA} > ${DFAM_FA}.no_tab.fa
 
    ## TeTools to know the count of each TE
-   awk '$1 ~ /^>/ {print $0, $2}' FS=['\t'_] ${DFAM_FA}.no_tab.fa | cut -c 2- > ${DATA_DIR}/rosette.fa
+   #awk '$1 ~ /^>/ {print $0, $2}' FS=['\t'_] ${DFAM_FA}.no_tab.fa | cut -c 2- > ${DATA_DIR}/rosette.fa
 
   end=`date +%s`
   elapsed=`expr $end - $begin`

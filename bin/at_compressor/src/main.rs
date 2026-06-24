@@ -8,6 +8,39 @@ use flate2::Compression;
 use flate2::read::MultiGzDecoder;
 use flate2::write::GzEncoder;
 
+#[inline(always)]
+fn process_and_write_seq(raw_seq: &[u8], out_seq: &mut Vec<u8>, writer: &mut Box<dyn Write>, w: usize) {
+    // 1. Ignorer les \n et \r à la fin (au lieu de vérifier chaque byte)
+    let mut len = raw_seq.len();
+    while len > 0 && (raw_seq[len - 1] == b'\n' || raw_seq[len - 1] == b'\r') {
+        len -= 1;
+    }
+    let clean_seq = &raw_seq[..len];
+
+    // 2. Prévenir les réallocations mémoire
+    out_seq.clear();
+    out_seq.reserve(len + 1);
+
+    let mut prev_byte = b'\0';
+    let mut count = 0;
+
+    // 3. Boucle sans la condition (if b == \n)
+    for &b in clean_seq {
+        if b == prev_byte {
+            count += 1;
+        } else {
+            prev_byte = b;
+            count = 1;
+        }
+        if count <= w {
+            out_seq.push(b);
+        }
+    }
+
+    out_seq.push(b'\n');
+    writer.write_all(out_seq).unwrap();
+}
+
 fn main() {
     // 1. Parse command line arguments
     let args: Vec<String> = env::args().collect();
@@ -27,20 +60,22 @@ fn main() {
     };
 
     // --- INPUT ---
+    let buf_size = 2 * 1024 * 1024;
+
     let in_file = File::open(input_path).expect("Error opening input");
     let mut reader: Box<dyn BufRead> = if input_path.ends_with(".gz") {
-        Box::new(BufReader::with_capacity(128 * 1024, MultiGzDecoder::new(in_file)))
+        Box::new(BufReader::with_capacity(buf_size, MultiGzDecoder::new(in_file)))
     } else {
-        Box::new(BufReader::with_capacity(128 * 1024, in_file))
+        Box::new(BufReader::with_capacity(buf_size, in_file))
     };
 
     // --- OUTPUT ---
     let out_file = File::create(output_path).expect("Error creating output");
     let mut writer: Box<dyn Write> = if output_path.ends_with(".gz") {
-        let encoder = GzEncoder::new(out_file, Compression::default());
-        Box::new(BufWriter::with_capacity(128 * 1024, encoder))
+        let encoder = GzEncoder::new(out_file, Compression::fast());
+        Box::new(BufWriter::with_capacity(buf_size, encoder))
     } else {
-        Box::new(BufWriter::with_capacity(128 * 1024, out_file))
+        Box::new(BufWriter::with_capacity(buf_size, out_file))
     };
 
     // 3. Pre-allocate vectors so we don't allocate memory during the loop
@@ -72,59 +107,12 @@ fn main() {
             header[0] = b'>';
         }
         writer.write_all(&header).unwrap();
-
-        // Compress the Sequence
-        let mut prev_byte = b'\0';
-        let mut count = 0;
-
-        for &b in &seq {
-            // Skip carriage returns and newlines from the raw byte array
-            if b == b'\n' || b == b'\r' {
-                continue;
-            }
-            if b == prev_byte {
-                count += 1;
-            } else {
-                prev_byte = b;
-                count = 1;
-            }
-            if count <= w { //if !is_at || count <= w {
-                out_seq.push(b);
-            }
-        }
-        
-        // Append a newline to the compressed sequence and write to file
-        out_seq.push(b'\n');
-        writer.write_all(&out_seq).unwrap();
+        process_and_write_seq(&seq, &mut out_seq, &mut writer, w);
 
         //Check if it not a fasta file (i.e. plus start with '>')
         if !plus.is_empty() && plus[0] == b'>' {
             writer.write_all(&plus).unwrap();
-
-            // Compress the Sequence
-            prev_byte = b'\0';
-            count = 0;
-            out_seq.clear();
-
-            for &b in &qual {
-                // Skip carriage returns and newlines from the raw byte array
-                if b == b'\n' || b == b'\r' {
-                    continue;
-                }
-                if b == prev_byte {
-                    count += 1;
-                } else {
-                    prev_byte = b;
-                    count = 1;
-                }
-                if count <= w { //if !is_at || count <= w {
-                    out_seq.push(b);
-                }
-            }
-
-            // Append a newline to the compressed sequence and write to file
-            out_seq.push(b'\n');
-            writer.write_all(&out_seq).unwrap();
+            process_and_write_seq(&qual, &mut out_seq, &mut writer, w);
         }
     }
 

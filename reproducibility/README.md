@@ -22,6 +22,12 @@ this repository.
 - **libomp-dev** version 1:18.0 (for C++ parallelisation)
 - **BCALM 2** version v2.2.3, git commit cf371b6 (Using gatb-core version 1.4.2)
 
+For each `<package>` ou `<xyz>` python3 package, you can use the following commands :
+```
+sudo apt install <package>
+sudo apt install python3-<xyz> for `<xyz>` python3 package
+```
+
 ### ET-core execution
 
 In the remaining of this reproducibility example, we will compute and analyse the extended-t-cores of the 

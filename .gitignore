@@ -25,6 +25,9 @@ bin/curve.py
 #Toy example
 toy_example*
 
+#Exe file
+bin/*.exe
+
 #Debugging executable
 .idea/
 trash*

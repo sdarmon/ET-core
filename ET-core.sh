@@ -233,8 +233,13 @@ if [[ -z "${SKIP_FASTP}" ]]; then
       --in2 ${READS_2} \
       --out1 ${DATA_DIR}/R1.fastp.gz \
       --out2 ${DATA_DIR}/R2.fastp.gz
-fi
 
+    end=`date +%s`
+    elapsed=`expr $end - $begin`
+    begin=`date +%s`
+    echo -e " FastP (in seconds): $elapsed \n"
+fi
+ 
 
 
 if [[ -z "${SKIP_HC}" ]]; then
@@ -267,6 +272,7 @@ if [[ -z "${SKIP_BCALM}" ]]; then
       -abundance-min ${A} \
       -minimizer-size ${M} \
       -max-memory ${MAX_MEM} \
+      -verbose 0 \
       -out ${DATA_DIR}/graph/hc_1_hc_2_k${K}
 
   rm  ${DATA_DIR}/graph/hc_1_hc_2_k${K}.unitigs.fa.glue*
@@ -404,8 +410,8 @@ if [[ -z "${SKIP_INDUCED}" ]]; then
 
      awk '{print $3}' FS='\t' ${RESULTS_DIR}/induced_cores_subgraph/connecting_unitigs.txt | sed 's/,/\t/g' > ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt
     python3 ${BIN_DIR}/connecting_to_edges.py ${RESULTS_DIR}/induced_cores_subgraph/connecting_edges.txt  > ${RESULTS_DIR}/induced_cores_subgraph/connected.edges
-
-
+    sort -u ${RESULTS_DIR}/induced_cores_subgraph/connected_paths.txt > ${RESULTS_DIR}/induced_cores_subgraph/temp
+    mv ${RESULTS_DIR}/induced_cores_subgraph/temp ${RESULTS_DIR}/induced_cores_subgraph/connected_paths.txt
 
     end=`date +%s`
     elapsed=`expr $end - $begin`

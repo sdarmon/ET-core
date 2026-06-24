@@ -3,51 +3,19 @@
 This repository contains the code for **ET-core**, a tool designed for the _de novo_ computation of **extended-t-cores** from 
 compacted de Bruijn graphs built using short-read RNA-seq data.
 
-The **extended-t-cores** conceptually correspond to the dense regions
-of the compacted de Bruijn graph due to the presence of inexact repeated sequences
-in the transcriptome. There are defined as the maximal subgraphs of the compacted de
-Bruijn graph where all the unitigs have a high **extended degree**. The **extended degree** of a unitig is 
-a generalization of the degree of a graph node. It represents the number of locally distinct transcripts containing that node.
+The **extended-t-cores** conceptually correspond to the dense regions 
+of the compacted de Bruijn graph due to the presence of inexact repeated sequences. 
+They are defined as the maximal connected subgraphs of the compacted de Bruijn graph where all the
+unitigs have a high extended degree. While the degree is bounded by the size of the alphabet (4 for DNA/RNA),
+the extended degree generalises this notion and corresponds to the number of nodes which can be reached at 
+a given distance (by default d=10). 
+In transcriptomics, it represents the number of locally distinct transcripts containing the sequence of the unitig.
 
-There are two ways to run **ET-core**: using the provided **Docker image** or by **cloning this repository**. 
+
+There are two ways to run **ET-core**: using the provided by **cloning this repository** or **Docker image**. 
 While the source code version requires installing dependencies, it includes a small example dataset and scripts for
 reproducibility. 
 Please refer to the relevant section below based on your choice.
-
-## ET-core from a docker image
-
-First check if docker is installed on your machine.
-
-If `docker ps` raise an error, you should add `sudo` to the following docker commands.
-
-### Download the image
-```
-docker pull sdarmon/et-core:1.0
-```
-### Execution of TE-core using docker
-```
-docker run --rm \
-    -v /absolute/path/to/your/reads/directory:/data \
-    -v /absolute/path/to/your/output/directory:/output \
-    sdarmon/te-core:1.0 \
-    --reads1 /data/reads_1.fastq[.gz] \
-    --reads2 /data/reads_2.fastq[.gz] \
-    -O /output
-```
-
-Where `reads_1.fastq[.gz]` and `reads_2.fastq[.gz]` are the paired-end reads, possibly `.gz`.
-
-Some additional parameters can be specified:
-- `-p`: number of threads to use (default: 8)
-- `-k`: k-mer size to use for the DGB construction (default: 41)
-- `-d`: extended degree distance to use for the weighting of the nodes (default: 10)
-- `-h`: hamming distance to use for the weighting of the nodes (default: 2)
-- `-t`: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)
-- `-a`: Abundance minimal for keeping the k-mers (default: 2)
-- `--max-memory`: max memory to use (in MBytes, default: 14000)
-- `--no-fastp` : do not run fastp on the reads (not recommended if the reads are not curated)
-- `--sample` : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
-
 
 ## ET-core from the Git clone
 
@@ -92,29 +60,55 @@ where `output_dir` is the output directory.
 
 Some additional parameters can be specified:
 - `-p`: number of threads to use (default: 8)
-- `-k`: k-mer size to use for the DGB construction (default: 41)
+- `-k`: k-mer size to use for the DBG construction (default: 41)
 - `-d`: extended degree distance to use for the weighting of the nodes (default: 10)
 - `-h`: hamming distance to use for the weighting of the nodes (default: 2)
 - `-t`: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)
-- `-a`: Abundance minimal for keeping the k-mers (default: 2)
+- `-a`: minimal abundance required to index the k-mers (default: 2)
 - `--max-memory`: max memory to use (in MBytes, default: 14000)
 - `--no-fastp` : do not run fastp on the reads (not recommended if the reads are not curated)
-- `--sample` : generation a sample given a sample size of fraction (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
+- `--sample` : subsample the reads (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
 
 
-### Quick recap of the steps
+## ET-core from a docker image
 
-1. Build the binaries (**Rust** and **C++** codes) and create a **Python3** venvironment.
-2. Run **FastP** to trim the reads, detect and remove adapters, and filter out low-quality reads. Logs are saved in the `output_dir/fastp_log.html` file.
-3. Do a homopolymer compression of the reads to limit A/T stretches.
-4. Build the de Bruijn graph using **BCALM2**.
-5. Extract the unitigs from the de Bruijn graph and filter the sequences errors edges.
-6. Compute the extended degree of the unitigs.
-7. Compute the threshold for the extended degree.
-8. Compute the extended-t-cores of the compacted de Bruijn graph.
-9. Compute a representative sequence for each extended-t-core.
-10. Classify the extended-t-cores depending on their repeat content (microsatellite, A/T stretches, others).
-11. Compute the induced subgraph of the pairwise connections between the extended-t-cores, including the DNA paths between them.
+First check if docker is installed on your machine.
+
+If `docker ps` raises an error, you should add `sudo` to the following docker commands.
+
+### Download the image
+```
+docker pull sdarmon/et-core:1.0
+```
+### Execution of ET-core using docker
+```
+docker run --rm \
+    -v /absolute/path/to/your/reads/directory:/data \
+    -v /absolute/path/to/your/output/directory:/output \
+    sdarmon/et-core:1.0 \
+    --reads1 /data/reads_1.fastq[.gz] \
+    --reads2 /data/reads_2.fastq[.gz] \
+    -O /output
+```
+
+Where `reads_1.fastq[.gz]` and `reads_2.fastq[.gz]` are the paired-end reads, possibly `.gz`.
+
+Some additional parameters can be specified:
+- `-p`: number of threads to use (default: 8)
+- `-k`: k-mer size to use for the DBG construction (default: 41)
+- `-d`: extended degree distance to use for the weighting of the nodes (default: 10)
+- `-h`: hamming distance to use for the weighting of the nodes (default: 2)
+- `-t`: threshold to use for the agglomeration of the nodes (default: 'precise'; options : 'sensitive' | 'precise' | t where t is a integer greater than 1)
+- `-a`: minimal abundance required to index the k-mers (default: 2)
+- `--max-memory`: max memory to use (in MBytes, default: 14000)
+- `--no-fastp` : do not run fastp on the reads (not recommended if the reads are not curated)
+- `--sample` : subsample the reads (default: no sampling; options : n (number of reads) | f (sample fraction, between 0 and 1))
+
+
+
+### Pipeline overview
+
+![pipeline overview](image/pipeline_overview.png)
 
 ### Output and files structure
 
@@ -134,31 +128,3 @@ following columns:
 | **`Core_connectivity`** | Number of paths connecting other extended $t$-cores to that core. | Integer |
 | **`Primary_neighbour`** | ID of the neighbour having the highest number of distinct paths connecting both cores, and percentage of such connecting paths. | ID:Percentage (%) |
 
-
-
-The output directory will contain the following files and directories:
-
-    OUTDIR/
-    ├── fastp_log.html
-    │
-    ├── data/
-    │   ├── R1/2.fastp.gz (reads after fastp)
-    │   ├── hc1/2.fastq.gz (reads after homopolymer compression)
-    │   └── graph/
-    │       ├── graph.nodes (id_unitig `\t` seq_unitig)
-    │       ├── graph.edges (id_unitig1 `\t` id_unitig2 `\t` way)
-    │       ├── graph.abundance (abundance_unitig)
-    │       └── outputNodes.txt (id_unitig `\t` seq_unitig `\t` extended_degree_unitig)
-    │
-    ├── results/
-    │   ├── extended_t_cores_summary.tsv 
-    │   ├── cores/
-    │   │   └── core${i}.nodes (unitigs of the ith extended-t-core)
-    │   └── induced_cores_subgraph/
-    │       └── connecting_paths.txt (id_core1 `\t` id_core2 `\t` path_between_cores)
-    │
-    WORK_DIR/
-    ├── extended-t-core.sh
-    ├── requirements.txt
-    ├── venv/
-    └── bin/
