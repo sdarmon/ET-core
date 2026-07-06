@@ -11,7 +11,7 @@ if len(Arg) == 7:
     d_max = 1000
 else:
     fast=False
-    d_max = 20
+    d_max = 15
 core = []
 max_ab = 0
 id_max_ad = 0

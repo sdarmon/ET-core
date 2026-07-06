@@ -191,7 +191,7 @@ if [[ -z "${SKIP_BOWTIE_CORES}" ]]; then
 
       if (( (i + 1) % step == 0 )); then
           PERCENTAGE=$(( ((i + 1) * 100) / MAXI ))
-          echo "Processing core $i of $MAXI ($PERCENTAGE% corelete)"
+          echo "Processing core $i of $MAXI ($PERCENTAGE% completed)"
       fi
 
       mkdir -p ${BASE_DIR}/alignment_${i}
@@ -403,7 +403,7 @@ if [[ -z "${SKIP_COUNT_EXPRESSED_TE_FEATURECOUNTS}" ]]; then
 
     #Join the files; they have the same TE order
     join -t $'\t' ${RESULTS_DIR}/TE_counts_final.txt ${RESULTS_DIR}/TE_length_coverage_final.txt \
-        | awk '{printf "%s\t%.3f\t%s\t%.2f\t%.2f\n", $1,$4,$2,76*$2/$3,76*$2/$3/98}'\
+        | awk '{printf "%s\t%.3f\t%s\t%.2f\t%.2f\n", $1,$4,$2,145*$2/$3,$2/$3/106}'\
         | LC_ALL=C sort -t $'\t' -k4,4gr \
         | awk 'BEGIN {print "TE\tBreath_Coverage\tCount\tDepth_Coverage\tRPKM"} {print $0}' \
         > ${RESULTS_DIR}/TE_coverage_count_ab.txt
