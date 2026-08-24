@@ -91,7 +91,7 @@ if [[ -n "${V}" ]]; then
     exit 0
 fi
 #If READS_1, READS_2 or OUTDIR are not set, exit
-if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n ${HELP} || -n ${VALIDE} ]]; then
+if [[ -z "$READS_1" || -z "$READS_2" || -z "$OUTDIR" || -n "${HELP}" || -n "${VALIDE}" ]]; then
     echo -e "Usage : $0  \n\t --reads1 <reads1.fastq[.gz]> \n\t --reads2 <reads2.fastq[.gz]> \n\t -O <output_dir> \n\t [-p <threads>] \n\t [-k <k-mer size>] \n\t [-d <extended degree distance>] \n\t [-h <hamming distance>] \n\t [-t <threshold>] \n\t [-a <abundance min>] \n\t [--max-memory <MB>]  \n\t [--no-fastp] \n\t [--sample <sample size | sample frac>]  \n\t [--help] \n"
 
     echo "Mandatory arguments : "
@@ -149,7 +149,7 @@ if [[ -n "${REBUILD}" || ! -f "${BIN_DIR}/graph.exe"  ]]; then
   ##Build the bin for the gene_finder function
   echo "Building the bin for the gene_finder function..."
   cargo build --release --manifest-path ${BIN_DIR}/gene_finder_de_novo/Cargo.toml
-  cp ${BIN_DIR}/gene_finder_de_novo/target/release/gene_finder_de_novo ${BIN_DIR}/gene_finder_de_novo.exe
+  cp ${BIN_DIR}/gene_finder_de_novo/target/release/gene_finder_de_novo ${BIN_DIR}/meta_graph_de_novo.exe
 
   ##Build the bin for the filtering_low_ab_percent function
   echo "Building the bin for the filtering_low_ab_percent function..."
@@ -227,7 +227,7 @@ if [[ -z "${SKIP_FASTP}" ]]; then
       --trim_poly_x \
       --thread ${P} \
       --poly_x_min_len 5 \
-      -z 4 \
+      -z 1 \
       --html ${RESULTS_DIR}/fastp_log.html \
       --in1 ${READS_1} \
       --in2 ${READS_2} \
@@ -332,7 +332,7 @@ if [[ -z "${SKIP_THRESHOLD}" ]]; then
   ##Compute the threshold
   echo "Threshold of the nodes..."
   if [[ -z "${T}" || "${T}" == "precise" ]]; then
-    # Default case or explicit sensitive
+    # Default case or precise
     T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/unitigs_extended_degree.nodes" top0001)
   elif [[ "${T}" == "sensitive" ]]; then
     T=$(python3 "${BIN_DIR}/plot.py" "${DATA_DIR}/graph/unitigs_extended_degree.nodes" top1)
@@ -399,7 +399,7 @@ fi
 
 if [[ -z "${SKIP_INDUCED}" ]]; then
      echo "Analysis of the extended_t_cores induced subgraph..."
-    ${BIN_DIR}/gene_finder_de_novo.exe \
+    ${BIN_DIR}/meta_graph_de_novo.exe \
           ${BASE_DIR}/core \
           ${DATA_DIR}/graph/unitigs_extended_degree.nodes \
           ${DATA_DIR}/graph/hc_1_hc_2_k${K}_C0.05.edges \

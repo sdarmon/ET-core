@@ -241,7 +241,7 @@ with open(Arg[4] + "_microsat.txt.temp", 'w') as f1:
                             score+=1
 
                         neigh_text="."
-                        if max_connection[i] > mean_deg/2 :
+                        if max_connection[i] > 0 :
                             score+=1
                             link= max_connection[i]
                             neigh = adjacent[i]

@@ -165,11 +165,14 @@ with (open(Arg[6], 'r') as f):
         index = int(L[0])
         ex_deg = int(L[3])
         TE = L[5]
-        if index not in nodes_seen and ex_deg < min_deg and ex_deg > 0:
+        if index not in nodes_seen and ex_deg < min_deg and ex_deg > 0: #
             if ex_deg not in dic_additional_nodes:
                 dic_additional_nodes[ex_deg] = []
             dic_additional_nodes[ex_deg].append(index)
             dic_index2TE[index] = TE
+            len_ex = len(ex_deg_unitig_count)
+            if ex_deg >= len_ex :
+                ex_deg_unitig_count+=[0]*(ex_deg-len_ex+1)
             ex_deg_unitig_count[ex_deg] += 1
 #Now compute a dynamic ROC curve points, keeping track of TP and FP in function of extended degree threshold (from high to low)
 
